@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>SIMUPASIR — Espacio grande (5000x5000) — R8</title>
+
+<!-- PWA: manifest + theme -->
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#003366">
+<link rel="icon" href="/icons/icon-192.png">
+
+<!-- Apple -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+
+<style>
+  :root{
+    --sidebar:#f3e5ab;
+    --node:#fff8dc;
+    --pin:#222;
+    --wire:#000;
+    --neon:#00ff66;
+    --accent:#444;
+    --pin-long:48px;
+    --workspace-size:5000px;
+  }
+
+  html,body { height:100%; }
+  body { margin:0; font-family: Inter, Arial, Helvetica, sans-serif; display:flex; height:100vh; overflow:hidden; background:#fff; }
+
+  /* Sidebar */
+  #sidebar { width:220px; background:var(--sidebar); padding:12px; border-right:3px solid #bdb089; display:flex; flex-direction:column; gap:10px; box-sizing:border-box; z-index:60; }
+  .component { background:var(--node); border:2px solid #7a7a7a; border-radius:8px; padding:8px; text-align:center; cursor:grab; user-select:none; font-weight:700; box-shadow: 0 2px 0 rgba(0,0,0,0.06); }
+
+  /* Canvas & workspace */
+  #canvas { flex:1; background:#ffffff; position:relative; overflow:hidden; touch-action:none; } /* touch-action none -> we handle touch panning */
+  #workspace { position:absolute; top:0; left:0; width:var(--workspace-size); height:var(--workspace-size); transform-origin:0 0; background:transparent; }
+
+  /* Nodo 3:2 (proporción) - tamaño base 150x225 */
+  .node {
+    position:absolute;
+    background:var(--node);
+    border:3px solid var(--accent);
+    border-radius:10px;
+    width:150px;
+    height:225px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    cursor:move;
+    user-select:none;
+    padding:8px;
+    box-sizing:border-box;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.06);
+    z-index:10;
+    touch-action: none; /* avoid default gestures on nodes */
+  }
+  .label { font-weight:900; margin-bottom:6px; pointer-events:none; font-size:14px; color:#222; }
+  .selected { box-shadow: 0 10px 18px rgba(0,0,0,0.12); border-color: #0058a3 !important; transform: translateY(-2px); }
+
+  /* Pines como línea gruesa (no atraviesan el bloque) */
+  .terminal { height:10px; background:var(--pin); position:absolute; cursor:pointer; border-radius:5px; box-shadow: 0 1px 0 rgba(0,0,0,0.15); }
+  .terminal.input { width: var(--pin-long); left: calc(-1 * var(--pin-long)); }
+  .terminal.output { width: var(--pin-long); right: calc(-1 * var(--pin-long)); top:50%; transform: translateY(-50%); }
+
+  .term-label { position:absolute; left:calc(-1 * var(--pin-long) - 36px); width:40px; text-align:right; font-size:12px; color:#222; user-select:none; }
+
+  /* SVG cables ocupa todo el workspace */
+  #wires { position:absolute; top:0; left:0; width:var(--workspace-size); height:var(--workspace-size); pointer-events:auto; z-index:6; }
+
+  .wire-path { fill:none; stroke:var(--wire); stroke-width:2; cursor:pointer; vector-effect: non-scaling-stroke; }
+  .wire-path.signal { stroke:var(--neon); stroke-width:3; filter: drop-shadow(0 0 8px rgba(0,255,102,0.25)); }
+  .wire-path.selected { stroke-width:3; stroke: #0078d7; }
+
+  .bend-handle { fill: #fff; stroke: #333; stroke-width:1.5px; r:6; cursor:grab; pointer-events:all; }
+  .bend-handle.selected { stroke: #0078d7; stroke-width:2.5px; fill:#e6f3ff; }
+
+  #controls { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); background:var(--sidebar); padding:8px 12px; border-radius:10px; border:2px solid #bdb089; display:flex; gap:10px; align-items:center; z-index:40; }
+  #controls button { padding:8px 10px; border-radius:8px; border:1px solid #777; background:#fff; font-weight:700; cursor:pointer; }
+
+  .q-indicator { width:18px; height:18px; border-radius:50%; background:#444; margin-top:8px; pointer-events:none; border:2px solid #222; }
+  .q-indicator.on { background:var(--neon); box-shadow:0 0 8px rgba(0,255,102,0.45); }
+
+  .hint { position: absolute; right: 12px; top: 12px; background: rgba(0,0,0,0.05); padding:10px; border-radius:8px; font-size:13px; color:#222; width:320px; z-index:40; }
+
+  #brand { position: fixed; right: 12px; bottom: 12px; background: rgba(0,0,0,0.06); padding:8px 12px; border-radius:8px; font-weight:900; letter-spacing:1px; z-index:60; box-shadow: 0 6px 0 rgba(0,0,0,0.04); }
+
+  /* Install button style */
+  #installBtn { display:none; position: fixed; right: 12px; bottom: 80px; z-index:100; background:#003366; color:#fff; border:none; padding:10px 14px; border-radius:10px; font-weight:900; cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,0.12); }
+
+  @media (max-width:720px){ #sidebar { display:none } }
+</style>
+</head>
+<body>
+
+  <div id="sidebar">
+    <div style="font-weight:900">SIMUPASIR — Componentes</div>
+    <div class="component" draggable="true" data-type="input">Entrada (I)</div>
+    <div class="component" draggable="true" data-type="output">Salida (Q)</div>
+    <div class="component" draggable="true" data-type="M">Memoria (M)</div>
+    <div style="height:8px"></div>
+    <div class="component" draggable="true" data-type="and">AND</div>
+    <div class="component" draggable="true" data-type="or">OR</div>
+    <div class="component" draggable="true" data-type="not">NOT</div>
+    <div class="component" draggable="true" data-type="nand">NAND</div>
+    <div class="component" draggable="true" data-type="nor">NOR</div>
+    <div class="component" draggable="true" data-type="xor">XOR</div>
+    <div class="component" draggable="true" data-type="xnor">XNOR</div>
+    <div style="height:8px"></div>
+    <div class="component" draggable="true" data-type="sr">SR (Set/Reset)</div>
+    <div style="flex:1"></div>
+    <div style="font-size:12px;color:#333">Arrastra al área. Conectar: clic salida → clic entrada. Selecciona y pulsa Supr para eliminar.</div>
+  </div>
+
+  <div id="canvas">
+    <!-- workspace grande -->
+    <div id="workspace">
+      <svg id="wires" xmlns="http://www.w3.org/2000/svg" width="5000" height="5000" viewBox="0 0 5000 5000" preserveAspectRatio="none"></svg>
+    </div>
+
+    <div id="controls">
+      <button id="simulate">Simular</button>
+      <button id="stop">Detener</button>
+      <button id="deleteBtn">Eliminar</button>
+      <div style="font-size:12px;color:#333;">(clic en I para alternar en simulación)</div>
+    </div>
+
+    <div class="hint">
+      - Área de trabajo: 5000×5000 px (amplio). <br>
+      - Pan por defecto con un dedo (modo edición). <br>
+      - Seleccionar línea + Supr / botón Eliminar para borrar.
+    </div>
+  </div>
+
+  <div id="brand">SIMUPASIR</div>
+
+  <!-- Install button (appears when beforeinstallprompt fires) -->
+  <button id="installBtn">Instalar SIMUPASIR Logic</button>
+
+<script>
+/* PWA: Install prompt handling */
+let deferredPrompt = null;
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  installBtn.style.display = 'block';
+});
+installBtn.addEventListener('click', async () => {
+  if(!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const choice = await deferredPrompt.userChoice;
+  // hide button after user choice
+  installBtn.style.display = 'none';
+  deferredPrompt = null;
+});
+
+/* Register service worker */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').then(reg => {
+      console.log('Service Worker registrado con scope:', reg.scope);
+    }).catch(err => console.error('Falló registro SW:', err));
+  });
+}
+
+/* SIMUPASIR — R8: workspace grande con pan por defecto (touch & mouse), conexiones siempre visibles,
+   y eliminación de línea seleccionada con botón o Supr. Simulación deselecciona todo.
+*/
+
+const canvas = document.getElementById("canvas");
+const workspace = document.getElementById("workspace");
+const wiresSVG = document.getElementById("wires");
+const components = document.querySelectorAll(".component");
+
+let nodes = [];
+let connections = [];
+let pendingOutput = null;
+let simulation = false;
+
+let inputCount=0, outputCount=0, memoryCount=0;
+let scale=1, panX=0, panY=0, isPanning=false, panStartX=0, panStartY=0;
+let simTimer=null, SCAN_MS=60;
+
+let selectedNode=null, selectedConn=null;
+let draggingBend=null;
+
+/* utilidad: convertir cliente -> coords workspace (teniendo en cuenta pan/zoom) */
+function clientToWorkspace(clientX, clientY){
+  const rect = canvas.getBoundingClientRect();
+  return { x: (clientX - rect.left - panX) / scale, y: (clientY - rect.top - panY) / scale };
+}
+
+/* devuelve el extremo EXTERNO del pin en coordenadas del workspace */
+function terminalEdge(term){
+  const rect = term.getBoundingClientRect();
+  const canvasRect = canvas.getBoundingClientRect();
+  const isInput = term.classList.contains('input');
+  const isOutput = term.classList.contains('output');
+
+  let x;
+  if(isInput){
+    x = rect.left - canvasRect.left;
+  } else if(isOutput){
+    x = rect.right - canvasRect.left;
+  } else {
+    x = rect.left - canvasRect.left + rect.width/2;
+  }
+  const y = rect.top - canvasRect.top + rect.height/2;
+  return { x: x/scale, y: y/scale };
+}
+
+/* PAN y ZOOM (mouse wheel) */
+canvas.addEventListener("wheel", e=>{
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -0.08 : 0.08;
+  scale = Math.min(Math.max(0.25, scale + delta), 3);
+  updateTransform();
+});
+
+/* Pan arrastrando fondo del workspace (mouse) */
+workspace.addEventListener("mousedown", e=>{
+  // paneo por defecto si clic en fondo del workspace
+  if(e.target === workspace){
+    if(e.button === 0){
+      clearSelection();
+    }
+    isPanning = true;
+    panStartX = e.clientX - panX; panStartY = e.clientY - panY;
+    document.addEventListener("mousemove", doPan);
+    document.addEventListener("mouseup", endPan);
+  }
+});
+function doPan(e){ if(!isPanning) return; panX = e.clientX - panStartX; panY = e.clientY - panStartY; updateTransform(); }
+function endPan(e){ isPanning=false; document.removeEventListener("mousemove", doPan); document.removeEventListener("mouseup", endPan); }
+function updateTransform(){ workspace.style.transform = `translate(${panX}px,${panY}px) scale(${scale})`; }
+
+/* --- Touch pan: pan por defecto con un dedo (Opción A) --- */
+let touchPan = { active:false, id:null, startClientX:0, startClientY:0, startPanX:0, startPanY:0 };
+workspace.addEventListener('touchstart', e=>{
+  // si tocamos fondo (no nodo/terminal) y es un solo dedo, iniciamos pan
+  if(e.touches.length === 1){
+    const t = e.touches[0];
+    const target = document.elementFromPoint(t.clientX, t.clientY);
+    // comenzamos pan solo si tocamos el workspace (no sobre nodos/terminals)
+    if(target === workspace || target === wiresSVG){
+      touchPan.active = true;
+      touchPan.id = t.identifier;
+      touchPan.startClientX = t.clientX;
+      touchPan.startClientY = t.clientY;
+      touchPan.startPanX = panX;
+      touchPan.startPanY = panY;
+      clearSelection();
+      e.preventDefault();
+    }
+  }
+}, { passive:false });
+
+workspace.addEventListener('touchmove', e=>{
+  if(!touchPan.active) return;
+  for(let i=0;i<e.touches.length;i++){
+    const t = e.touches[i];
+    if(t.identifier === touchPan.id){
+      const dx = t.clientX - touchPan.startClientX;
+      const dy = t.clientY - touchPan.startClientY;
+      panX = touchPan.startPanX + dx;
+      panY = touchPan.startPanY + dy;
+      updateTransform();
+      e.preventDefault();
+      return;
+    }
+  }
+}, { passive:false });
+
+workspace.addEventListener('touchend', e=>{
+  // if touch with our id ended
+  if(!touchPan.active) return;
+  let still=false;
+  for(let i=0;i<e.touches.length;i++){
+    if(e.touches[i].identifier === touchPan.id) still=true;
+  }
+  if(!still) {
+    touchPan.active=false;
+    touchPan.id=null;
+  }
+});
+
+/* Drag desde sidebar -> workspace */
+components.forEach(comp => comp.addEventListener("dragstart", e=>e.dataTransfer.setData("type", comp.dataset.type)));
+canvas.addEventListener("dragover", e=>e.preventDefault());
+canvas.addEventListener("drop", e=>{
+  e.preventDefault();
+  if(simulation) return;
+  const type = e.dataTransfer.getData("type");
+  const pos = clientToWorkspace(e.clientX, e.clientY);
+  createNode(type, pos.x, pos.y);
+});
+
+/* selección */
+function selectNode(node){ if(simulation) return; clearSelection(); selectedNode=node; node.el.classList.add('selected'); }
+function selectConnection(conn){ if(simulation) return; clearSelection(); selectedConn=conn; conn.selected=true; if(conn.path) conn.path.classList.add('selected'); renderConnection(conn); }
+function clearSelection(){
+  if(selectedNode){ selectedNode.el.classList.remove('selected'); selectedNode=null; }
+  if(selectedConn){ if(selectedConn.path) selectedConn.path.classList.remove('selected'); selectedConn.selected=false; selectedConn=null; }
+  connections.forEach(c=>{ if(c.handles) c.handles.forEach(h=>h.remove()); c.handles=[]; });
+}
+
+/* ocultar manejadores (si los hubiera) */
+function hideAllBendHandles(){ connections.forEach(conn=>{ if(conn.handles){ conn.handles.forEach(h=>h.remove()); conn.handles = []; } }); }
+
+/* crear nodo */
+function createNode(type, x, y){
+  const div = document.createElement('div'); div.className='node'; div.style.left = x + 'px'; div.style.top = y + 'px';
+  let name = type.toUpperCase();
+  if(type==='input') name = `I${++inputCount}`;
+  if(type==='output') name = `Q${++outputCount}`;
+  if(type==='M') name = `M${++memoryCount}`;
+
+  const lbl = document.createElement('div'); lbl.className='label'; lbl.textContent=name; div.appendChild(lbl);
+  const qind = document.createElement('div'); qind.className='q-indicator off'; div.appendChild(qind);
+
+  const output = document.createElement('div'); output.className='terminal output'; div.appendChild(output);
+  const inputs = [];
+
+  if(type==='input'){ div.style.background='#ffe4b5'; }
+  else if(type==='output' || type==='M'){ const inp=document.createElement('div'); inp.className='terminal input'; inp.style.top='50%'; div.appendChild(inp); inputs.push(inp); }
+  else if(type==='not'){ const inp=document.createElement('div'); inp.className='terminal input'; inp.style.top='50%'; div.appendChild(inp); inputs.push(inp); }
+  else if(type==='sr'){
+    const inS = document.createElement('div'); inS.className='terminal input'; inS.style.top='28%';
+    const labelS = document.createElement('div'); labelS.className='term-label'; labelS.style.top='24%'; labelS.textContent='S';
+    const inR = document.createElement('div'); inR.className='terminal input'; inR.style.top='72%';
+    const labelR = document.createElement('div'); labelR.className='term-label'; labelR.style.top='68%'; labelR.textContent='R';
+    div.appendChild(inS); div.appendChild(labelS); div.appendChild(inR); div.appendChild(labelR);
+    inputs.push(inS); inputs.push(inR);
+  } else {
+    const nInputs = 4;
+    for(let i=0;i<nInputs;i++){
+      const inp = document.createElement('div'); inp.className='terminal input';
+      inp.style.top = `${(i+1)*100/(nInputs+1)}%`;
+      div.appendChild(inp); inputs.push(inp);
+    }
+  }
+
+  workspace.appendChild(div);
+
+  const node = { el:div, type, name, inputs, output, value:0, nextValue:0, qIndicator:qind, invalid:false };
+  if(type==='sr') node.q = 0;
+  nodes.push(node);
+
+  // center output vertically
+  if(node.output){ node.output.style.top='50%'; node.output.style.transform='translateY(-50%)'; }
+
+  // seleccionar (nota: para mover un bloque en edición debes primero seleccionarlo y luego arrastrar)
+  div.addEventListener('click', e=>{ if(e.target.classList.contains('terminal')) return; if(simulation) return; selectNode(node); });
+
+  // toggle input during simulation
+  if(type==='input'){
+    div.addEventListener('click', e=>{ if(e.target.classList.contains('terminal')) return; if(!simulation) return; div.classList.toggle('active'); scanLogic(); });
+  }
+
+  dragMove(div, node);
+  enableConnections(node);
+  div.addEventListener('contextmenu', e=>{ e.preventDefault(); if(!simulation) removeNode(node); });
+
+  updateConnections();
+}
+
+/* mover nodos (deshabilitado en simulación)
+   IMPORTANT: per Opción A, moving nodes by drag requires they are selected first.
+   Implementation: dragging starts only if node is selected.
+*/
+function dragMove(el,node){
+  let sx, sy, ix, iy, dragging=false;
+  el.addEventListener('mousedown', e=>{
+    if(e.target.classList.contains('terminal')) return;
+    if(simulation) return;
+    // only allow drag if this node is selected
+    if(selectedNode !== node) return;
+    e.preventDefault();
+    sx = e.clientX; sy = e.clientY; ix = parseFloat(el.style.left); iy = parseFloat(el.style.top);
+    dragging = true;
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  });
+  function onMove(e){
+    if(!dragging) return;
+    el.style.left = ix + (e.clientX - sx)/scale + 'px';
+    el.style.top  = iy + (e.clientY - sy)/scale + 'px';
+    updateConnections();
+  }
+  function onUp(){ dragging=false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+  // touch support for dragging selected node (single touch)
+  el.addEventListener('touchstart', e=>{
+    if(simulation) return;
+    if(selectedNode !== node) return;
+    const t = e.changedTouches[0];
+    sx = t.clientX; sy = t.clientY; ix = parseFloat(el.style.left); iy = parseFloat(el.style.top);
+    dragging = true;
+    document.addEventListener('touchmove', onTouchMove, {passive:false});
+    document.addEventListener('touchend', onTouchEnd);
+    e.stopPropagation();
+    e.preventDefault();
+  }, {passive:false});
+  function onTouchMove(e){
+    if(!dragging) return;
+    const t = e.changedTouches[0];
+    el.style.left = ix + (t.clientX - sx)/scale + 'px';
+    el.style.top  = iy + (t.clientY - sy)/scale + 'px';
+    updateConnections();
+    e.preventDefault();
+  }
+  function onTouchEnd(){
+    dragging=false;
+    document.removeEventListener('touchmove', onTouchMove);
+    document.removeEventListener('touchend', onTouchEnd);
+  }
+}
+
+/* habilitar conexiones */
+function enableConnections(node){
+  const handler = el => {
+    if(simulation) return;
+    if(el.classList.contains('output')){ pendingOutput = el; return; }
+    if(el.classList.contains('input')){
+      if(!pendingOutput) return;
+      if(pendingOutput === el){ pendingOutput = null; return; }
+      createConnection(pendingOutput, el);
+      pendingOutput = null;
+    }
+  };
+  if(node.output) node.output.addEventListener('click', ()=>handler(node.output));
+  node.inputs.forEach(inp => inp.addEventListener('click', ()=>handler(inp)));
+}
+
+/* crear conexión (simple L-shape o con bends) */
+function createConnection(fromTerm, toTerm){
+  if(simulation) return;
+  if(connections.find(c => c.from === fromTerm && c.to === toTerm)) return;
+  const conn = { from: fromTerm, to: toTerm, path: null, bends: [], handles: [], selected: false };
+  connections.push(conn);
+  renderConnection(conn);
+}
+
+/* dibujar conexión en SVG completa sobre workspace (coord workspace) */
+function renderConnection(conn){
+  // eliminar previo
+  if(conn.path){ conn.path.remove(); conn.path = null; }
+  if(conn.handles){ conn.handles.forEach(h=>h.remove()); conn.handles = []; }
+
+  const s = terminalEdge(conn.from);
+  const e = terminalEdge(conn.to);
+
+  // ruta ortogonal: start -> midX -> end (o con bends)
+  let d = '';
+  if(conn.bends.length === 0){
+    const midX = (s.x + e.x) / 2;
+    d = `M${s.x},${s.y} L${midX},${s.y} L${midX},${e.y} L${e.x},${e.y}`;
+  } else {
+    const pts = [{x:s.x,y:s.y}].concat(conn.bends).concat([{x:e.x,y:e.y}]);
+    d = `M${pts[0].x},${pts[0].y} `;
+    for(let i=1;i<pts.length;i++){
+      const prev = pts[i-1], next = pts[i];
+      d += `L${next.x},${prev.y} L${next.x},${next.y} `;
+    }
+  }
+
+  const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+  path.setAttribute("d", d);
+  path.setAttribute("class", "wire-path");
+
+  const srcVal = getSourceNodeValue(conn);
+  if(srcVal === 1) path.classList.add('signal'); else path.classList.remove('signal');
+
+  // selección (click mouse)
+  path.addEventListener('click', ev=>{
+    ev.stopPropagation();
+    if(simulation) return;
+    selectConnection(conn);
+  });
+
+  // touch tap selection for connections
+  path.addEventListener('touchstart', ev=>{
+    ev.stopPropagation();
+    if(simulation) return;
+    selectConnection(conn);
+  });
+
+  // click derecho borra
+  path.addEventListener('contextmenu', ev=>{
+    ev.preventDefault();
+    if(simulation) return;
+    const idx = connections.indexOf(conn);
+    if(idx >= 0) connections.splice(idx,1);
+    clearSelection();
+    updateConnections();
+  });
+
+  // long press para agregar bend (solo si no está en simulación)
+  let longPressTimer = null;
+  function onPathDown(ev){
+    if(simulation) return;
+    // left-button only for mouse; touchstart handled above
+    if(ev.type === 'mousedown' && ev.button !== 0) return;
+    ev.stopPropagation();
+    longPressTimer = setTimeout(()=>{
+      // add bend
+      const clientX = (ev.type === 'mousedown') ? ev.clientX : (ev.touches && ev.touches[0] ? ev.touches[0].clientX : ev.clientX);
+      const clientY = (ev.type === 'mousedown') ? ev.clientY : (ev.touches && ev.touches[0] ? ev.touches[0].clientY : ev.clientY);
+      const pos = clientToWorkspace(clientX, clientY);
+      conn.bends.push({ x: pos.x, y: pos.y });
+      orderBends(conn);
+      renderConnection(conn);
+      selectConnection(conn);
+    }, 500);
+    document.addEventListener('mouseup', onPathUpOnce);
+    document.addEventListener('touchend', onPathUpOnce, {passive:true});
+  }
+  function onPathUpOnce(){ if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; } document.removeEventListener('mouseup', onPathUpOnce); document.removeEventListener('touchend', onPathUpOnce); }
+  path.addEventListener('mousedown', onPathDown);
+  path.addEventListener('touchstart', onPathDown, {passive:false});
+
+  wiresSVG.appendChild(path);
+  conn.path = path;
+
+  // si está seleccionada, dibujar handles para bends
+  if(conn.selected && !simulation){
+    conn.handles = [];
+    conn.bends.forEach((b, idx)=>{
+      const c = document.createElementNS("http://www.w3.org/2000/svg","circle");
+      c.setAttribute("cx", b.x);
+      c.setAttribute("cy", b.y);
+      c.setAttribute("r", 6);
+      c.setAttribute("class", "bend-handle");
+      wiresSVG.appendChild(c);
+      conn.handles.push(c);
+
+      // arrastrar bend (mouse)
+      c.addEventListener('mousedown', ev=>{
+        if(simulation) return;
+        ev.stopPropagation();
+        draggingBend = { conn, index: idx };
+        document.addEventListener('mousemove', onBendMove);
+        document.addEventListener('mouseup', onBendUp);
+      });
+
+      // arrastrar bend (touch)
+      c.addEventListener('touchstart', ev=>{
+        if(simulation) return;
+        ev.stopPropagation();
+        const t = ev.changedTouches[0];
+        draggingBend = { conn, index: idx, touchId: t.identifier };
+        document.addEventListener('touchmove', onBendMoveTouch, {passive:false});
+        document.addEventListener('touchend', onBendUpTouch);
+      }, {passive:false});
+
+      c.addEventListener('click', ev=>{ ev.stopPropagation(); if(simulation) return; selectConnection(conn); c.classList.add('selected'); });
+    });
+  }
+
+  // actualizar visual pines/origen
+  updatePinsVisual(conn, srcVal);
+}
+
+/* arrastrar bend (mouse) */
+function onBendMove(ev){
+  if(!draggingBend) return;
+  const pos = clientToWorkspace(ev.clientX, ev.clientY);
+  const conn = draggingBend.conn;
+  const idx = draggingBend.index;
+  conn.bends[idx].x = pos.x;
+  conn.bends[idx].y = pos.y;
+  renderConnection(conn);
+}
+function onBendUp(ev){
+  if(!draggingBend) return;
+  document.removeEventListener('mousemove', onBendMove);
+  document.removeEventListener('mouseup', onBendUp);
+  draggingBend = null;
+}
+/* arrastrar bend (touch) */
+function onBendMoveTouch(ev){
+  if(!draggingBend) return;
+  ev.preventDefault();
+  const t = ev.changedTouches[0];
+  const pos = clientToWorkspace(t.clientX, t.clientY);
+  const conn = draggingBend.conn;
+  const idx = draggingBend.index;
+  conn.bends[idx].x = pos.x;
+  conn.bends[idx].y = pos.y;
+  renderConnection(conn);
+}
+function onBendUpTouch(){
+  if(!draggingBend) return;
+  document.removeEventListener('touchmove', onBendMoveTouch);
+  document.removeEventListener('touchend', onBendUpTouch);
+  draggingBend = null;
+}
+
+/* ordenar bends horizontalmente para mantener ruta lógica */
+function orderBends(conn){
+  const s = terminalEdge(conn.from);
+  const e = terminalEdge(conn.to);
+  const asc = s.x <= e.x;
+  conn.bends.sort((a,b)=> asc ? a.x - b.x : b.x - a.x);
+}
+
+/* actualizar color pin/indicador */
+function updatePinsVisual(conn, srcVal){
+  try{ if(conn.from) conn.from.style.background = srcVal===1 ? getComputedStyle(document.documentElement).getPropertyValue('--neon') || '#00ff66' : getComputedStyle(document.documentElement).getPropertyValue('--pin') || '#222'; }catch(e){}
+  const srcNode = nodes.find(n=>n.output===conn.from);
+  if(srcNode && srcNode.qIndicator){ if(srcVal===1) srcNode.qIndicator.classList.add('on'); else srcNode.qIndicator.classList.remove('on'); }
+}
+
+/* obtener valor fuente */
+function getSourceNodeValue(conn){
+  const n = nodes.find(nn => nn.output === conn.from);
+  return n ? n.value : 0;
+}
+
+/* redibujar todas las conexiones */
+function updateConnections(){ connections.forEach(c=>renderConnection(c)); }
+
+/* eliminar nodo + sus conexiones */
+function removeNode(node){
+  if(simulation) return;
+  connections = connections.filter(c => c.from !== node.output && !node.inputs.includes(c.to));
+  node.el.remove();
+  nodes = nodes.filter(n => n !== node);
+  clearSelection();
+  updateConnections();
+}
+
+/* compuertas — 4 entradas para los gates excepto NOT (1) y SR (2) */
+function evaluateGate(type, inputs){
+  if(inputs.length === 0) return 0;
+  switch(type){
+    case 'and': return inputs.every(v=>v===1)?1:0;
+    case 'or': return inputs.some(v=>v===1)?1:0;
+    case 'not': return inputs[0]?0:1;
+    case 'nand': return inputs.every(v=>v===1)?0:1;
+    case 'nor': return inputs.some(v=>v===1)?0:1;
+    case 'xor': return inputs.reduce((a,b)=>a^b,0);
+    case 'xnor': return evaluateGate('xor', inputs)?0:1;
+    default: return inputs[0]||0;
+  }
+}
+
+/* ciclo de simulación */
+function scanLogic(){
+  nodes.forEach(n=>{ if(n.type==='input') n.value = n.el.classList.contains('active')?1:0; n.invalid=false; });
+
+  nodes.forEach(node=>{
+    node.nextValue = node.value;
+    if(node.type === 'input') return;
+
+    const inVals = connections.filter(c => node.inputs.includes(c.to)).map(c => {
+      const s = nodes.find(n => n.output === c.from); return s ? s.value : 0;
+    });
+
+    if(inVals.length === 0){
+      if(node.type === 'output' || node.type === 'M') node.nextValue = 0;
+      else if(node.type === 'sr') node.nextValue = node.q || 0;
+      else node.nextValue = 0;
+      return;
+    }
+
+    if(node.type === 'output' || node.type === 'M') node.nextValue = inVals[0] ? 1 : 0;
+    else if(node.type === 'sr'){
+      const S = inVals[0] ? 1 : 0; const R = inVals[1] ? 1 : 0;
+      if(S === 1 && R === 0){ node.q = 1; node.nextValue = 1; }
+      else if(S === 0 && R === 1){ node.q = 0; node.nextValue = 0; }
+      else node.nextValue = node.q || 0;
+    } else node.nextValue = evaluateGate(node.type, inVals) ? 1 : 0;
+  });
+
+  nodes.forEach(n=>{ n.value = n.nextValue; if(n.type==='sr') n.q = n.nextValue; });
+
+  nodes.forEach(n=>{
+    if(n.type === 'input' || n.type === 'output' || n.type === 'M'){
+      n.el.classList.toggle('active', n.value === 1);
+      if(n.output) n.output.style.background = n.value===1 ? getComputedStyle(document.documentElement).getPropertyValue('--neon') || '#00ff66' : getComputedStyle(document.documentElement).getPropertyValue('--pin') || '#222';
+    } else n.el.classList.remove('active');
+    if(n.qIndicator) n.qIndicator.classList.toggle('on', n.value===1);
+    n.el.classList.toggle('error', !!n.invalid);
+  });
+
+  // actualizar rutas (pintan verde si señal)
+  updateConnections();
+}
+
+/* botones */
+document.getElementById('simulate').addEventListener('click', ()=>{
+  if(simulation) return;
+  // Al iniciar simulación: deseleccionar todo (tal como pediste)
+  clearSelection();
+  simulation = true;
+  scanLogic();
+  simTimer = setInterval(scanLogic, SCAN_MS);
+});
+document.getElementById('stop').addEventListener('click', ()=>{
+  if(simTimer){ clearInterval(simTimer); simTimer = null; }
+  simulation = false;
+  // limpiar visuales
+  nodes.forEach(n=>{ n.value=0; if(n.type==='input' || n.type==='output' || n.type==='M') n.el.classList.remove('active'); if(n.qIndicator) n.qIndicator.classList.remove('on'); n.invalid=false; if(n.output) n.output.style.background = getComputedStyle(document.documentElement).getPropertyValue('--pin') || '#222'; });
+  updateConnections();
+});
+document.getElementById('deleteBtn').addEventListener('click', ()=>{
+  if(simulation) return;
+  if(selectedNode){ removeNode(selectedNode); return; }
+  if(selectedConn){
+    const idx = connections.indexOf(selectedConn);
+    if(idx >= 0) connections.splice(idx,1);
+    clearSelection();
+    updateConnections();
+    return;
+  }
+});
+
+/* tecla Supr para eliminar selección */
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Delete' || e.key === 'Backspace'){
+    if(simulation) return;
+    if(selectedNode) removeNode(selectedNode);
+    else if(selectedConn){
+      const idx = connections.indexOf(selectedConn);
+      if(idx >= 0) connections.splice(idx,1);
+      clearSelection();
+      updateConnections();
+    }
+  }
+});
+
+/* click fondo deselecciona y oculta manejadores */
+workspace.addEventListener('click', (e)=>{
+  if(e.target === workspace){
+    clearSelection();
+    hideAllBendHandles();
+  }
+});
+
+/* iniciar */
+updateConnections();
+console.log("SIMUPASIR R8 listo — workspace 5000x5000, pan por defecto (touch & mouse), cables siempre visibles.");
+</script>
+</body>
+</html>
