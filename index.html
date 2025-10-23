@@ -231,7 +231,7 @@
       - Pan con un dedo. Pellizca para zoom. <br>
       - Toca salida (pin azul) → entrada. <br>
       - Mantén presionado un cable para agregar un nodo y arrástralo. <br>
-      - Doble toque en un cable ⇒ lo convierte en etiqueta (reduce cableado).<br>
+      - <strong>Doble toque en un cable</strong> ⇒ se elimina y se crean etiquetas (origen/destino).<br>
       - Toca el fondo para des-seleccionar.
     </div>
   </div>
@@ -254,7 +254,7 @@
   </div>
 
 <script>
-/* ===== PWA básico (manifest/SW mínimos ya listos en archivos externos) ===== */
+/* ===== PWA básico ===== */
 let deferredPrompt=null;
 const installBtn=document.getElementById('installBtn');
 window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; installBtn.style.display='block'; });
@@ -439,16 +439,13 @@ canvas.addEventListener('click', e=>{
 /* Selección general / conexiones */
 function removeConnection(conn){
   if(!conn) return;
-  // si hay temporizadores pendientes de longpress que agregaban bends, cancela
   if(conn._lpCancel && typeof conn._lpCancel === 'function'){ conn._lpCancel(); }
-  // si estábamos arrastrando su bend, cancelar
   if(draggingBend && draggingBend.conn===conn){ stopDraggingHandle(); }
 
   const i=connections.indexOf(conn); if(i>=0) connections.splice(i,1);
   conn.path && conn.path.remove();
   conn.hit && conn.hit.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-  // etiquetas (modo label)
   conn.tagSrc && conn.tagSrc.remove();
   conn.tagDst && conn.tagDst.remove();
   if(selectedConn===conn) selectedConn=null;
@@ -635,15 +632,21 @@ function onBendMoveTouch(ev){
   scheduleBendRender(conn);
 }
 
-/* Texto etiqueta destino: Bxxx/n o Qk/n, Ik/n, Mk/n */
-function getDestTag(conn){
+/* ====== Generación de etiquetas al convertir cable ====== */
+/* Texto del ORIGEN (para la etiqueta en el pin de ENTRADA) */
+function getSourceName(conn){
+  const srcNode = nodes.find(n=>n.output===conn.from);
+  if(!srcNode) return '??';
+  if(srcNode.type==='input' || srcNode.type==='output' || srcNode.type==='M') return srcNode.name; // I1 / Q1 / M1
+  return srcNode.code || 'B???'; // B001...
+}
+/* Texto del DESTINO (para la etiqueta en el pin de SALIDA) */
+function getDestNameWithPin(conn){
   const dstNode = nodes.find(n=>n.inputs.includes(conn.to));
-  let pinIndex = 1 + (dstNode ? dstNode.inputs.indexOf(conn.to) : 0);
   if(!dstNode) return '??';
-  if(dstNode.type==='output') return `${dstNode.name}/${pinIndex}`;
-  if(dstNode.type==='input')  return `${dstNode.name}/${pinIndex}`;
-  if(dstNode.type==='M')      return `${dstNode.name}/${pinIndex}`;
-  return `${dstNode.code||'B???'}/${pinIndex}`;
+  const pinIndex = 1 + dstNode.inputs.indexOf(conn.to);
+  if(dstNode.type==='input' || dstNode.type==='output' || dstNode.type==='M') return `${dstNode.name}/${pinIndex}`; // Q1/1, I1/1, M1/1
+  return `${dstNode.code || 'B???'}/${pinIndex}`; // B001/1
 }
 
 /* Posicionar tag al lado del pin */
@@ -657,7 +660,7 @@ function placeTagAtPin(pinEl, text, isSource){
   const dx = isSource ? 16 : -16;
   tag.style.left = (e.x + dx) + 'px';
   tag.style.top  = (e.y - 16) + 'px';
-  // Interacciones básicas: seleccionar al tocar
+  // Selección básica
   tag.addEventListener('click', (ev)=>{ ev.stopPropagation(); const c=findConnForTag(tag); if(c) selectConnection(c); });
   tag.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); const c=findConnForTag(tag); if(c) selectConnection(c); }, {passive:true});
   return tag;
@@ -666,22 +669,21 @@ function findConnForTag(tag){
   return connections.find(c=> c.tagSrc===tag || c.tagDst===tag );
 }
 
-/* Convertir una conexión cableada a etiquetas (doble tap) */
+/* Convertir una conexión cableada a etiquetas (doble tap/click) */
 function convertWireToLabel(conn){
-  // Evitar que un longpress tardío “recreé” el cable
-  if(conn._lpCancel && typeof conn._lpCancel==='function'){ conn._lpCancel(); }
-  // Quitar paths/hits
-  conn.path && conn.path.remove();
-  conn.hit && conn.hit.remove();
+  // Limpia paths/hit/handles
+  conn.path && conn.path.remove(); conn.path=null;
+  conn.hit && conn.hit.remove(); conn.hit=null;
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
 
-  const dstText = getDestTag(conn);
-  // Tag en la salida: muestra a dónde va
-  conn.tagSrc = placeTagAtPin(conn.from, dstText, true);
-  // Tag en la entrada: muestra el mismo destino
-  conn.tagDst = placeTagAtPin(conn.to, dstText, false);
+  // Genera textos según regla pedida
+  const inputSideText  = getSourceName(conn);        // en pin de ENTRADA: origen (B001, Q1, M1, I1)
+  const outputSideText = getDestNameWithPin(conn);   // en pin de SALIDA: destino/pin (B001/1, Q1/1, ...)
 
-  // Marcar como modo etiqueta
+  // Crea tags
+  conn.tagDst = placeTagAtPin(conn.to,   inputSideText,  false);
+  conn.tagSrc = placeTagAtPin(conn.from, outputSideText, true);
+
   conn.mode = 'label';
 }
 
@@ -700,7 +702,6 @@ function renderConnection(conn){
     conn.path && conn.path.remove();
     conn.hit && conn.hit.remove();
     (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-    // Reposicionar tags si cambia zoom/pan
     if(conn.tagSrc){ const e=terminalEdge(conn.from); conn.tagSrc.style.left=(e.x+16)+'px'; conn.tagSrc.style.top=(e.y-16)+'px'; }
     if(conn.tagDst){ const e=terminalEdge(conn.to);   conn.tagDst.style.left=(e.x-16)+'px'; conn.tagDst.style.top=(e.y-16)+'px'; }
     return;
@@ -736,16 +737,17 @@ function renderConnection(conn){
   hit.addEventListener('touchstart',onSelect,{passive:true});
   hit.addEventListener('contextmenu',(ev)=>{ ev.preventDefault(); if(simulation) return; removeConnection(conn); });
 
-  /* Doble tap / doble click ⇒ convertir a etiqueta */
+  /* Doble tap / doble click ⇒ convertir a etiqueta y eliminar cable */
+  function handleDoubleActivate(ev){
+    ev.preventDefault(); ev.stopPropagation();
+    if(!connections.includes(conn)) return;
+    convertWireToLabel(conn);
+    lastTapTarget=null; lastTapTime=0;
+  }
   function tryDoubleTap(ev){
     const now=Date.now();
     if(lastTapTarget===hit && (now-lastTapTime)<=DBL_TAP_MS){
-      // Doble tap confirmado
-      ev.preventDefault(); ev.stopPropagation();
-      // Si el conn ya fue eliminado entre el primer y segundo tap, aborta
-      if(!connections.includes(conn)) return;
-      convertWireToLabel(conn);
-      lastTapTarget=null; lastTapTime=0;
+      handleDoubleActivate(ev);
       return true;
     }else{
       lastTapTarget=hit; lastTapTime=now;
@@ -753,18 +755,13 @@ function renderConnection(conn){
     }
   }
   hit.addEventListener('touchstart', (ev)=>{ if(tryDoubleTap(ev)) return; }, {passive:false});
-  hit.addEventListener('click', (ev)=>{ // en desktop, click rápido dos veces
-    const now=Date.now();
-    if(lastTapTarget===hit && (now-lastTapTime)<=DBL_TAP_MS){ ev.preventDefault(); ev.stopPropagation(); if(!connections.includes(conn)) return; convertWireToLabel(conn); lastTapTarget=null; lastTapTime=0; }
-    else { lastTapTarget=hit; lastTapTime=now; }
-  });
+  hit.addEventListener('click', (ev)=>{ const now=Date.now(); if(lastTapTarget===hit && (now-lastTapTime)<=DBL_TAP_MS){ handleDoubleActivate(ev); } else { lastTapTarget=hit; lastTapTime=now; } });
 
   // Long press para agregar bend
   function onPathDown(ev){
     if(simulation) return;
     if(ev.type==='mousedown' && ev.button!==0) return;
     ev.stopPropagation();
-    // setup cancel guard para evitar “cables fantasma” post-eliminación
     let cancelled=false;
     const cancel=()=>{ cancelled=true; if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer=null; } document.removeEventListener('mouseup',cancel); document.removeEventListener('touchend',cancel); };
     document.addEventListener('mouseup',cancel,{once:true});
@@ -772,8 +769,8 @@ function renderConnection(conn){
     conn._lpCancel = cancel;
 
     longPressTimer=setTimeout(()=>{
-      if(cancelled) return;               // conexión eliminada o cancelada
-      if(!connections.includes(conn)) return; // ya no existe
+      if(cancelled) return;
+      if(!connections.includes(conn)) return;
       const clientX=(ev.type==='mousedown')?ev.clientX:(ev.touches?.[0]?.clientX ?? ev.clientX);
       const clientY=(ev.type==='mousedown')?ev.clientY:(ev.touches?.[0]?.clientY ?? ev.clientY);
       const pos=clientToWorkspace(clientX,clientY);
@@ -916,7 +913,6 @@ document.addEventListener('keydown', (e)=>{
     if(selectedNode) removeNode(selectedNode);
     else if(selectedConn) { removeConnection(selectedConn); updateConnections(); }
   }
-  // Esc para limpiar último doble tap objetivo (por si acaso)
   if(e.key==='Escape'){ lastTapTarget=null; lastTapTime=0; }
 });
 
@@ -925,7 +921,7 @@ window.addEventListener('resize', updateConnections);
 
 /* Init */
 updateConnections();
-console.log("SIMUPASIR: Doble-tap en cable => etiqueta. Tamaños ajustados.");
+console.log("SIMUPASIR: Doble-tap en cable => etiquetas (origen y destino).");
 </script>
 </body>
 </html>
