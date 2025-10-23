@@ -25,7 +25,7 @@
     --pin-long:24px;          /* largo visible para pines rectangulares */
     --pin-hit-h:28px;         /* alto del hitbox real para toque */
     --pin-visible-h:7px;      /* alto visible del pin rectangular */
-    --round-pin:28px;         /* DIÁMETRO pin redondo (doble del anterior 14px) */
+    --round-pin:28px;         /* DIÁMETRO pin redondo (doble 14px -> 28px) */
 
     --workspace-size:5000px;
   }
@@ -91,7 +91,7 @@
   /* === Salida circular negra para NOT, NAND y NOR (pegada al bloque) === */
   .terminal.output.out-round{
     width:var(--round-pin);
-    right:calc(-1 * var(--round-pin));   /* el borde del círculo toca el borde del bloque */
+    right:calc(-1 * var(--round-pin));   /* el borde del círculo toca el borde derecho del bloque */
   }
   .terminal.output.out-round::before{
     width:var(--round-pin);
@@ -219,14 +219,17 @@ let longPressTimer=null;
 let currentToPlace=null;
 let selectedPinEl=null;
 
-/* Etiquetas estilo LOGO! Soft (NOR y NAND iguales a OR y AND, resp. ) */
+/* RAF para suavizar arrastre de bend */
+let bendRaf=null, bendRafConn=null;
+
+/* Etiquetas estilo LOGO! Soft */
 function logoLabelForType(type){
   switch(type){
     case 'and':  return '&';
-    case 'nand': return '&';   /* igual a AND */
+    case 'nand': return '&';   /* igual a AND, la inversión es la burbuja */
     case 'or':   return '≥1';
-    case 'nor':  return '≥1';  /* igual a OR  */
-    case 'not':  return '¬';
+    case 'nor':  return '≥1';  /* igual a OR, la inversión es la burbuja */
+    case 'not':  return '1';   /* como pediste: NOT = 1 */
     case 'xor':  return '=1';
     case 'xnor': return '≠1';
     case 'sr':   return 'S/R';
@@ -347,10 +350,10 @@ canvas.addEventListener('click', e=>{
 function removeConnection(conn){
   if(!conn) return;
   const i=connections.indexOf(conn); if(i>=0) connections.splice(i,1);
-  conn.path?.remove(); conn.hit?.remove();
+  conn.path && conn.path.remove();
+  conn.hit && conn.hit.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
   if(selectedConn===conn) selectedConn=null;
-  updateConnections();
 }
 function selectConnection(conn){
   if(simulation) return;
@@ -373,7 +376,7 @@ function clearSelection(){
 function createNode(type,x,y){
   const div=document.createElement('div'); div.className='node'; div.style.left=x+'px'; div.style.top=y+'px';
 
-  // Etiqueta estilo LOGO! Soft (NAND/NOR como AND/OR)
+  // Etiqueta estilo LOGO! Soft
   let display = logoLabelForType(type);
   if(type==='input')  display = `I${++inputCount}`;
   else if(type==='output') display = `Q${++outputCount}`;
@@ -490,7 +493,7 @@ function trackGhost(e){ if(!pendingGhost||!pendingOutput) return; const p=client
 function trackGhostTouch(e){ if(!pendingGhost||!pendingOutput) return; const t=e.touches[0]; const p=clientToWorkspace(t.clientX,t.clientY); const s=terminalEdge(pendingOutput); updateGhostPath(pendingGhost,s.x,s.y,p.x,p.y); e.preventDefault(); }
 function updateGhostPath(path,sx,sy,ex,ey){ const midX=(sx+ex)/2; path.setAttribute('d',`M${sx},${sy} L${midX},${sy} L${midX},${ey} L${ex},${ey}`); }
 
-/* Arrastre de nodo (bend) */
+/* Arrastre de nodo (bend) con RAF */
 function startDraggingHandle(conn,index){
   if(conn.handles && conn.handles[index]) conn.handles[index].classList.add('dragging');
   draggingBend={conn,index};
@@ -509,8 +512,25 @@ function stopDraggingHandle(){
   document.removeEventListener('touchmove',onBendMoveTouch);
   document.removeEventListener('touchend',stopDraggingHandle);
 }
-function onBendMove(ev){ if(!draggingBend) return; const pos=clientToWorkspace(ev.clientX,ev.clientY); const {conn,index}=draggingBend; conn.bends[index].x=pos.x; conn.bends[index].y=pos.y; renderConnection(conn); }
-function onBendMoveTouch(ev){ if(!draggingBend) return; ev.preventDefault(); const t=ev.touches[0]; const pos=clientToWorkspace(t.clientX,t.clientY); const {conn,index}=draggingBend; conn.bends[index].x=pos.x; conn.bends[index].y=pos.y; renderConnection(conn); }
+function scheduleBendRender(conn){
+  bendRafConn = conn;
+  if(bendRaf) return;
+  bendRaf = requestAnimationFrame(()=>{ renderConnection(bendRafConn); bendRaf=null; });
+}
+function onBendMove(ev){
+  if(!draggingBend) return;
+  const pos=clientToWorkspace(ev.clientX,ev.clientY);
+  const {conn,index}=draggingBend;
+  conn.bends[index].x=pos.x; conn.bends[index].y=pos.y;
+  scheduleBendRender(conn);
+}
+function onBendMoveTouch(ev){
+  if(!draggingBend) return; ev.preventDefault();
+  const t=ev.touches[0]; const pos=clientToWorkspace(t.clientX,t.clientY);
+  const {conn,index}=draggingBend;
+  conn.bends[index].x=pos.x; conn.bends[index].y=pos.y;
+  scheduleBendRender(conn);
+}
 
 /* Conexión */
 function createConnection(fromTerm,toTerm){
@@ -559,7 +579,7 @@ function renderConnection(conn){
       conn.bends.push({x:pos.x,y:pos.y}); orderBends(conn); selectConnection(conn); renderConnection(conn);
       let idx=0, best=1e9; conn.bends.forEach((b,i)=>{ const dd=Math.hypot(b.x-pos.x,b.y-pos.y); if(dd<best){best=dd; idx=i;} });
       startDraggingHandle(conn,idx);
-    },500);
+    },400);
     const cancel=()=>{ if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer=null; } };
     document.addEventListener('mouseup',cancel,{once:true});
     document.addEventListener('touchend',cancel,{once:true,passive:true});
@@ -610,13 +630,25 @@ function updatePinsVisual(conn, srcVal){
 function getSourceNodeValue(conn){ const n=nodes.find(nn=>nn.output===conn.from); return n? n.value:0; }
 function updateConnections(){ connections.forEach(c=>renderConnection(c)); }
 
-/* Eliminar bloque + cables asociados */
+/* Eliminar bloque + cables asociados (también desde el DOM) */
 function removeNode(node){
   if(simulation) return;
-  if(selectedConn && (selectedConn.from===node.output || node.inputs.includes(selectedConn.to))) selectedConn=null;
-  connections = connections.filter(c=> c.from!==node.output && !node.inputs.includes(c.to) );
-  node.el.remove(); nodes = nodes.filter(n=>n!==node);
-  clearSelection(); updateConnections();
+
+  // Des-seleccionar si el pin seleccionado pertenece a este nodo
+  if(selectedPinEl && (selectedPinEl===node.output || node.inputs.includes(selectedPinEl))){
+    selectedPinEl.classList.remove('pin-selected'); selectedPinEl=null; pendingOutput=null; removeGhost();
+  }
+
+  // Buscar conexiones afectadas y eliminarlas del DOM y del array
+  const toRemove = connections.filter(c=> c.from===node.output || node.inputs.includes(c.to) );
+  toRemove.forEach(removeConnection);
+
+  // Remover bloque
+  node.el.remove();
+  nodes = nodes.filter(n=>n!==node);
+
+  clearSelection();
+  updateConnections();
 }
 
 /* Lógica */
@@ -682,13 +714,13 @@ document.getElementById('stop').addEventListener('click', ()=>{
 document.getElementById('deleteBtn').addEventListener('click', ()=>{
   if(simulation) return;
   if(selectedNode) { removeNode(selectedNode); return; }
-  if(selectedConn) { removeConnection(selectedConn); return; }
+  if(selectedConn) { removeConnection(selectedConn); updateConnections(); return; }
 });
 document.addEventListener('keydown', (e)=>{
   if(e.key==='Delete' || e.key==='Backspace'){
     if(simulation) return;
     if(selectedNode) removeNode(selectedNode);
-    else if(selectedConn) removeConnection(selectedConn);
+    else if(selectedConn) { removeConnection(selectedConn); updateConnections(); }
   }
 });
 
@@ -697,7 +729,7 @@ window.addEventListener('resize', updateConnections);
 
 /* Init */
 updateConnections();
-console.log("SIMUPASIR: pin redondo 28px pegado al bloque (NOT/NAND/NOR) y NOR/NAND con símbolos OR/AND.");
+console.log("SIMUPASIR: borrado de cables al eliminar bloque + bends con RAF + símbolos LOGO! (NOT=1).");
 </script>
 </body>
 </html>
