@@ -33,7 +33,7 @@
   html,body { height:100%; }
   body { margin:0; font-family: Inter, Arial, Helvetica, sans-serif; display:flex; height:100vh; overflow:hidden; background:#fff; }
 
-  /* Sidebar angosta */
+  /* Sidebar (angosto) */
   #sidebar {
     width:150px;
     background:var(--sidebar);
@@ -94,7 +94,7 @@
     box-shadow: 0 2px 0 rgba(0,0,0,.06);
   }
 
-  /* Pines: hitbox grande (rectangular por defecto) */
+  /* Pines con hitbox grande */
   .terminal{
     position:absolute; cursor:pointer; border-radius:8px; box-shadow:0 1px 0 rgba(0,0,0,.08);
     height:var(--pin-hit-h); background:transparent;
@@ -126,7 +126,7 @@
 
   .term-label{ position:absolute; left:calc(-1 * var(--pin-long) - 36px); width:40px; text-align:right; font-size:12px; color:#222; user-select:none; }
 
-  /* Cables + hitbox cómodo */
+  /* Cables + hitbox cómodo (5px de stroke) */
   #wires{ position:absolute; top:0; left:0; width:var(--workspace-size); height:var(--workspace-size); pointer-events:auto; z-index:6; }
   .wire-hit{ fill:none; stroke:#000; stroke-width:40; stroke-opacity:0; vector-effect:non-scaling-stroke; pointer-events:stroke; stroke-linecap:round; }
   .wire-path{ fill:none; stroke:var(--wire); stroke-width:5; vector-effect:non-scaling-stroke; pointer-events:stroke; }
@@ -159,11 +159,36 @@
     background:#003366; color:#fff; border:none; padding:10px 14px; border-radius:10px; font-weight:900; cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,.12);
   }
 
+  /* Botón paleta flotante (móvil) */
+  #fabPalette{
+    position:fixed; left:12px; bottom:12px; z-index:210;
+    background:#003366; color:#fff; border:none; padding:12px 14px; border-radius:999px; font-weight:900; cursor:pointer;
+    box-shadow:0 6px 0 rgba(0,0,0,.12); display:none;
+  }
+
+  /* Modal paleta */
+  #paletteModal{
+    position:fixed; inset:0; display:none; z-index:220; background:rgba(0,0,0,.35);
+  }
+  #paletteSheet{
+    position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:16px 16px 0 0;
+    padding:14px; border-top:3px solid #003366;
+  }
+  #paletteGrid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
+  .pick{
+    background:#fff8dc; border:2px solid #7a7a7a; border-radius:10px; padding:10px;
+    font-weight:800; font-size:20px; text-align:center; cursor:pointer;
+  }
+
   @supports(padding:max(0px)){
     #controls { bottom: calc(12px + env(safe-area-inset-bottom)); }
     #installBtn { bottom: calc(80px + env(safe-area-inset-bottom)); }
+    #fabPalette { bottom: calc(12px + env(safe-area-inset-bottom)); }
   }
-  @media (max-width:720px){ #sidebar { display:none; } }
+  @media (max-width:720px){
+    #sidebar{ display:none; }      /* oculto en móvil */
+    #fabPalette{ display:block; }  /* aparece botón paleta */
+  }
 </style>
 </head>
 <body>
@@ -212,8 +237,22 @@
   <div id="brand">SIMUPASIR</div>
   <button id="installBtn">Instalar SIMUPASIR</button>
 
+  <!-- Botón paleta flotante (móvil) -->
+  <button id="fabPalette">🧩 Bloques</button>
+
+  <!-- Modal paleta -->
+  <div id="paletteModal" aria-hidden="true">
+    <div id="paletteSheet">
+      <div style="font-weight:900;margin-bottom:10px;color:#003366">Elige un bloque</div>
+      <div id="paletteGrid"></div>
+      <div style="margin-top:10px;display:flex;justify-content:center">
+        <button id="closePalette" style="padding:8px 12px;border-radius:8px;border:1px solid #777;background:#fff;font-weight:700">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
 <script>
-/* ===== PWA básico (no modificamos manifest/SW aún) ===== */
+/* ===== PWA básico (no tocamos manifest/SW aún) ===== */
 let deferredPrompt=null;
 const installBtn=document.getElementById('installBtn');
 window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; installBtn.style.display='block'; });
@@ -248,10 +287,10 @@ function zpad(n,len=3){ return String(n).padStart(len,'0'); }
 function logoLabelForType(type){
   switch(type){
     case 'and':  return '&';
-    case 'nand': return '&';   /* igual a AND, con burbuja en salida */
+    case 'nand': return '&';
     case 'or':   return '≥1';
-    case 'nor':  return '≥1';  /* igual a OR, con burbuja en salida */
-    case 'not':  return '1';   /* NOT = 1 */
+    case 'nor':  return '≥1';
+    case 'not':  return '1';
     case 'xor':  return '=1';
     case 'xnor': return '≠1';
     case 'sr':   return 'S/R';
@@ -285,10 +324,7 @@ function setZoom(next){
   panX = cx-rect.left - fx*newScale; panY = cy-rect.top - fy*newScale; scale=newScale;
   updateTransform(); updateConnections();
 }
-document.getElementById('zoomIn').onclick = ()=>setZoom(scale+0.12);
-document.getElementById('zoomOut').onclick= ()=>setZoom(scale-0.12);
 function updateTransform(){ workspace.style.transform=`translate(${panX}px,${panY}px) scale(${scale})`; }
-
 workspace.addEventListener("mousedown", e=>{
   if(e.target===workspace){
     if(e.button===0) clearSelection();
@@ -345,8 +381,7 @@ workspace.addEventListener('touchend', e=>{
   if(!still) touchPan.active=false;
 });
 
-/* DnD (PC) + tap para insertar (móvil/preview) */
-let currentToPlace=null;
+/* DnD (PC) + sidebar click (PC) */
 components.forEach(comp=>{
   comp.addEventListener("dragstart", e=>{
     e.dataTransfer.setData("application/x-simupasir", comp.dataset.type);
@@ -361,15 +396,42 @@ canvas.addEventListener("drop", e=>{
   const type=e.dataTransfer.getData("application/x-simupasir")||e.dataTransfer.getData("text/plain");
   if(!type) return; const pos=clientToWorkspace(e.clientX,e.clientY); createNode(type,pos.x,pos.y);
 });
+
+/* Paleta flotante (móvil) */
+const fab = document.getElementById('fabPalette');
+const modal = document.getElementById('paletteModal');
+const grid = document.getElementById('paletteGrid');
+const closePalette = document.getElementById('closePalette');
+const PALETTE_TYPES = ['input','output','M','and','or','not','nand','nor','xor','xnor','sr'];
+
+function openPalette(){
+  grid.innerHTML = '';
+  PALETTE_TYPES.forEach(t=>{
+    const btn = document.createElement('button');
+    btn.className='pick';
+    btn.textContent = t.toUpperCase();
+    btn.onclick = ()=>{ currentToPlace = t; closePaletteModal(); };
+    grid.appendChild(btn);
+  });
+  modal.style.display='block'; modal.setAttribute('aria-hidden','false');
+}
+function closePaletteModal(){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }
+fab.addEventListener('click', openPalette);
+closePalette.addEventListener('click', closePaletteModal);
+modal.addEventListener('click', (e)=>{ if(e.target===modal) closePaletteModal(); });
+
+/* Tap para colocar (cuando hay tipo seleccionado) o deseleccionar */
 canvas.addEventListener('click', e=>{
   if(e.target===workspace || e.target===wiresSVG){
     if(currentToPlace){
       const pos=clientToWorkspace(e.clientX,e.clientY); createNode(currentToPlace,pos.x,pos.y);
-    }else{ clearSelection(); }
+    }else{
+      clearSelection();
+    }
   }
 });
 
-/* Selección general */
+/* Selección general / conexiones */
 function removeConnection(conn){
   if(!conn) return;
   const i=connections.indexOf(conn); if(i>=0) connections.splice(i,1);
@@ -399,13 +461,13 @@ function clearSelection(){
 function createNode(type,x,y){
   const div=document.createElement('div'); div.className='node'; div.style.left=x+'px'; div.style.top=y+'px';
 
-  // Etiqueta estilo LOGO! Soft (texto grande)
+  // Etiqueta estilo LOGO! Soft
   let display = logoLabelForType(type);
   if(type==='input')  display = `I${++inputCount}`;
   else if(type==='output') display = `Q${++outputCount}`;
   else if(type==='M')      display = `M${++memoryCount}`;
 
-  /* Badge B001... (no aplicar a I/Q/M) */
+  /* Badge B001... (no para I/Q/M) */
   let blockCode=null;
   if(type!=='input' && type!=='output' && type!=='M'){
     blockCode = 'B'+zpad(++blockCodeCount);
@@ -659,7 +721,7 @@ function updatePinsVisual(conn, srcVal){
 function getSourceNodeValue(conn){ const n=nodes.find(nn=>nn.output===conn.from); return n? n.value:0; }
 function updateConnections(){ connections.forEach(c=>renderConnection(c)); }
 
-/* Eliminar bloque + cables asociados (también desde el DOM) */
+/* Eliminar bloque + cables asociados */
 function removeNode(node){
   if(simulation) return;
 
@@ -720,6 +782,28 @@ function scanLogic(){
   updateConnections();
 }
 
+/* Conexión desde pines (con feedback) */
+function enableConnections(node){
+  const handler = el=>{
+    if(simulation) return;
+
+    if(el.classList.contains('output')){
+      selectedPinEl?.classList.remove('pin-selected');
+      selectedPinEl=el; el.classList.add('pin-selected');
+      pendingOutput=el; showGhost(el); return;
+    }
+    if(el.classList.contains('input')){
+      el.classList.add('pin-target'); setTimeout(()=>el.classList.remove('pin-target'),300);
+      if(!pendingOutput) return;
+      if(pendingOutput===el){ removeGhost(); selectedPinEl?.classList.remove('pin-selected'); selectedPinEl=null; pendingOutput=null; return; }
+      createConnection(pendingOutput, el);
+      removeGhost(); selectedPinEl?.classList.remove('pin-selected'); selectedPinEl=null; pendingOutput=null;
+    }
+  };
+  node.output && node.output.addEventListener('click', ()=>handler(node.output));
+  node.inputs.forEach(inp=>inp.addEventListener('click', ()=>handler(inp)));
+}
+
 /* Botones */
 document.getElementById('simulate').addEventListener('click', ()=>{
   if(simulation) return;
@@ -754,7 +838,7 @@ window.addEventListener('resize', updateConnections);
 
 /* Init */
 updateConnections();
-console.log("SIMUPASIR: Paso 1 completado — códigos B001 en bloques (excepto I/Q/M).");
+console.log("SIMUPASIR: Inserción habilitada en móvil con paleta flotante.");
 </script>
 </body>
 </html>
