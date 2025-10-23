@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>SIMUPASIR — móvil + menú en cable</title>
+<title>SIMUPASIR — etiquetas con stub</title>
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#003366">
@@ -44,11 +44,11 @@
 
   /* Bloques */
   .node{position:absolute;background:var(--node);border:3px solid var(--accent);border-radius:10px;width:150px;height:225px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:move;user-select:none;padding:8px;box-sizing:border-box;box-shadow:0 6px 0 rgba(0,0,0,.06);z-index:10;touch-action:none}
-  .label{font-weight:900;margin-bottom:6px;pointer-events:none;color:#222;font-size:60px;line-height:1.05} /* símbolos 70% más */
+  .label{font-weight:900;margin-bottom:6px;pointer-events:none;color:#222;font-size:60px;line-height:1.05}
   .selected{box-shadow:0 10px 18px rgba(0,0,0,.12);border-color:#0058a3!important;transform:translateY(-2px)}
 
-  /* Badge B001… (50% más grande) */
-  .badge{position:absolute;top:6px;left:6px;padding:3px 8px;border-radius:10px;border:2px solid #003366;background:#fff;color:#003366;font-weight:900;font-size:18px;line-height:1;pointer-events:none;user-select:none;box-shadow:0 2px 0 rgba(0,0,0,.06)}
+  /* Badge B001… (50% más grande del diseño anterior) */
+  .badge{position:absolute;top:6px;left:6px;padding:4px 10px;border-radius:12px;border:2px solid #003366;background:#fff;color:#003366;font-weight:900;font-size:18px;line-height:1;pointer-events:none;user-select:none;box-shadow:0 2px 0 rgba(0,0,0,.06)}
 
   /* Pines con hitbox grande */
   .terminal{position:absolute;cursor:pointer;border-radius:8px;box-shadow:0 1px 0 rgba(0,0,0,.08);height:var(--pin-hit-h);background:transparent}
@@ -79,8 +79,9 @@
   .bend-handle.dragging{fill:#e6f3ff}
   .bend-hit{fill:#000;fill-opacity:0;r:24;pointer-events:all}
 
-  /* Etiquetas de conexión */
-  .conn-tag{position:absolute;transform:translate(-50%,-50%);background:#fff;border:2px solid #003366;color:#003366;border-radius:10px;padding:2px 6px;font-weight:900;font-size:14px;line-height:1;box-shadow:0 2px 0 rgba(0,0,0,.06);user-select:none}
+  /* Etiquetas 90% más grandes */
+  .conn-tag{position:absolute;transform:translate(-50%,-50%);background:#fff;border:3px solid #003366;color:#003366;border-radius:12px;padding:6px 12px;font-weight:900;
+            font-size:27px;line-height:1;box-shadow:0 2px 0 rgba(0,0,0,.06);user-select:none;z-index:20}
   .conn-tag-src{background:#003366;color:#fff}
   .conn-tag.selected{outline:3px solid #0078d7;outline-offset:2px}
 
@@ -368,9 +369,12 @@ function removeConnection(conn){
   const i=connections.indexOf(conn); if(i>=0) connections.splice(i,1);
   conn.path && conn.path.remove(); conn.hit && conn.hit.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-  conn.tagSrc && conn.tagSrc.remove(); conn.tagDst && conn.tagDst.remove();
+  conn.tagSrcEl && conn.tagSrcEl.remove(); conn.tagSrcEl=null;
+  conn.tagDstEl && conn.tagDstEl.remove(); conn.tagDstEl=null;
+  conn.tagSrcStub && conn.tagSrcStub.remove(); conn.tagSrcStub=null;
+  conn.tagDstStub && conn.tagDstStub.remove(); conn.tagDstStub=null;
   if(selectedConn===conn) selectedConn=null;
-  if(selectedTag && (selectedTag===conn.tagSrc || selectedTag===conn.tagDst)){ selectedTag.classList.remove('selected'); selectedTag=null; }
+  if(selectedTag && (selectedTag===conn.tagSrcEl || selectedTag===conn.tagDstEl)){ selectedTag.classList.remove('selected'); selectedTag=null; }
 }
 function selectConnection(conn){
   if(simulation) return;
@@ -514,33 +518,98 @@ function trackGhost(e){ if(!pendingGhost||!pendingOutput) return; const p=client
 function trackGhostTouch(e){ if(!pendingGhost||!pendingOutput) return; const t=e.touches[0]; const p=clientToWorkspace(t.clientX,t.clientY); const s=terminalEdge(pendingOutput); updateGhostPath(pendingGhost,s.x,s.y,p.x,p.y); e.preventDefault(); }
 function updateGhostPath(path,sx,sy,ex,ey){ const midX=(sx+ex)/2; path.setAttribute('d',`M${sx},${sy} L${midX},${sy} L${midX},${ey} L${ex},${ey}`); }
 
-/* ===== Etiquetas ===== */
+/* ===== Etiquetas con "stub" conectado al pin ===== */
+const pinStacks = new WeakMap(); // pinEl -> count
+
 function getSourceName(conn){
   const srcNode = nodes.find(n=>n.output===conn.from);
   if(!srcNode) return '??';
-  if(srcNode.type==='input' || srcNode.type==='output' || srcNode.type==='M') return srcNode.name;
+  if(srcNode.type==='input'||srcNode.type==='output'||srcNode.type==='M') return srcNode.name;
   return srcNode.code || 'B???';
 }
 function getDestNameWithPin(conn){
   const dstNode = nodes.find(n=>n.inputs.includes(conn.to));
   if(!dstNode) return '??';
   const pinIndex = 1 + dstNode.inputs.indexOf(conn.to);
-  if(dstNode.type==='input' || dstNode.type==='output' || dstNode.type==='M') return `${dstNode.name}/${pinIndex}`;
+  if(dstNode.type==='input'||dstNode.type==='output'||dstNode.type==='M') return `${dstNode.name}/${pinIndex}`;
   return `${dstNode.code || 'B???'}/${pinIndex}`;
 }
-function placeTagAtPin(pinEl, text, isSource){
+
+/* Crear etiqueta + stub y registrar en conexión */
+function createTagWithStub(conn, pinEl, text, isSource){
+  // calcular índice de apilado para el pin
+  const current = pinStacks.get(pinEl) || 0;
+  pinStacks.set(pinEl, current+1);
+  const stackIndex = current; // 0,1,2,...
+
+  // crear DIV etiqueta
   const tag = document.createElement('div');
   tag.className = 'conn-tag' + (isSource ? ' conn-tag-src' : '');
   tag.textContent = text;
   workspace.appendChild(tag);
-  const e = terminalEdge(pinEl);
-  const dx = isSource ? 16 : -16;
-  tag.style.left = (e.x + dx) + 'px';
-  tag.style.top  = (e.y - 16) + 'px';
-  tag.addEventListener('click', (ev)=>{ ev.stopPropagation(); selectTag(tag); });
-  tag.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); selectTag(tag); }, {passive:true});
-  return tag;
+
+  // crear path stub
+  const stub = document.createElementNS("http://www.w3.org/2000/svg","path");
+  stub.setAttribute('class','wire-path'); // mismo estilo cable
+  wiresSVG.appendChild(stub);
+
+  // guardar en la conexión según origen/destino
+  if(isSource){
+    conn.tagSrcEl = tag; conn.tagSrcStub = stub;
+    conn.tagSrcStack = stackIndex; conn.tagSrcIsSrc = true;
+  }else{
+    conn.tagDstEl = tag; conn.tagDstStub = stub;
+    conn.tagDstStack = stackIndex; conn.tagDstIsSrc = false;
+  }
+
+  // interacción
+  function onSel(ev){ ev.stopPropagation(); selectTag(tag); }
+  tag.addEventListener('click', onSel);
+  tag.addEventListener('touchstart', onSel, {passive:true});
 }
+
+/* posicionar etiqueta y stub en cada render */
+function layoutTag(pinEl, tagEl, stubPath, stackIndex, isSource){
+  if(!pinEl || !tagEl || !stubPath) return;
+  const e = terminalEdge(pinEl);
+  const sign = isSource ? +1 : -1;
+
+  // separación base desde el pin
+  const baseGap = 40; // distancia horizontal desde el pin al centro de etiqueta
+  // apilado hacia arriba (negativo) con spacing mayor por tamaño grande
+  const spacingY = 34; // separación vertical entre etiquetas
+  const offsetY = -16 - (stackIndex * spacingY);
+
+  const cx = e.x + sign * baseGap;
+  const cy = e.y + offsetY;
+
+  // posicionar tag (HTML)
+  tagEl.style.left = cx + 'px';
+  tagEl.style.top  = cy + 'px';
+
+  // dibujar stub (SVG) con camino ortogonal: pin -> midX -> cy -> cx
+  const midX = e.x + sign * 18; // pequeño avance desde el pin
+  const d = `M${e.x},${e.y} L${midX},${e.y} L${midX},${cy} L${cx},${cy}`;
+  stubPath.setAttribute('d', d);
+}
+
+/* Convertir un cable a etiquetas */
+function convertWireToLabel(conn){
+  // limpiar paths/handles del cable
+  conn.path && conn.path.remove(); conn.path=null;
+  conn.hit && conn.hit.remove(); conn.hit=null;
+  (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
+
+  const inputSideText  = getSourceName(conn);       // etiqueta en el pin de ENTRADA (texto = bloque ORIGEN)
+  const outputSideText = getDestNameWithPin(conn);  // etiqueta en el pin de SALIDA (texto = destino/pin)
+
+  createTagWithStub(conn, conn.to,   inputSideText,  false);
+  createTagWithStub(conn, conn.from, outputSideText, true);
+
+  conn.mode = 'label';
+  renderConnection(conn); // posiciona etiquetas y stubs
+}
+
 function selectTag(tag){
   if(selectedTag===tag) return;
   selectedTag?.classList.remove('selected');
@@ -549,25 +618,13 @@ function selectTag(tag){
   // al seleccionar tag, limpiamos cualquier conexión seleccionada
   if(selectedConn){ selectedConn.path?.classList.remove('selected'); selectedConn.selected=false; selectedConn=null; }
 }
-function convertWireToLabel(conn){
-  conn.path && conn.path.remove(); conn.path=null;
-  conn.hit && conn.hit.remove(); conn.hit=null;
-  (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-
-  const inputSideText  = getSourceName(conn);
-  const outputSideText = getDestNameWithPin(conn);
-
-  conn.tagDst = placeTagAtPin(conn.to,   inputSideText,  false);
-  conn.tagSrc = placeTagAtPin(conn.from, outputSideText, true);
-
-  conn.mode = 'label';
-}
 
 /* Crear conexión */
 function createConnection(fromTerm,toTerm){
   if(simulation) return;
   if(connections.find(c => c.from===fromTerm && c.to===toTerm)) return;
-  const conn={ from:fromTerm, to:toTerm, path:null, hit:null, bends:[], handles:[], selected:false, mode:'wire' };
+  const conn={ from:fromTerm, to:toTerm, path:null, hit:null, bends:[], handles:[], selected:false, mode:'wire',
+               tagSrcEl:null, tagSrcStub:null, tagDstEl:null, tagDstStub:null };
   connections.push(conn); renderConnection(conn);
 }
 
@@ -619,18 +676,23 @@ function onBendMoveTouch(ev){
 /* Render conexión */
 function renderConnection(conn){
   if(conn.mode==='label'){
-    conn.path && conn.path.remove();
-    conn.hit && conn.hit.remove();
-    (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-    if(conn.tagSrc){ const e=terminalEdge(conn.from); conn.tagSrc.style.left=(e.x+16)+'px'; conn.tagSrc.style.top=(e.y-16)+'px'; }
-    if(conn.tagDst){ const e=terminalEdge(conn.to);   conn.tagDst.style.left=(e.x-16)+'px'; conn.tagDst.style.top=(e.y-16)+'px'; }
+    // posicionar etiquetas y sus stubs
+    if(conn.tagSrcEl && conn.tagSrcStub){
+      layoutTag(conn.from, conn.tagSrcEl, conn.tagSrcStub, conn.tagSrcStack||0, true);
+    }
+    if(conn.tagDstEl && conn.tagDstStub){
+      layoutTag(conn.to, conn.tagDstEl, conn.tagDstStub, conn.tagDstStack||0, false);
+    }
     return;
   }
 
+  // modo cable
   conn.path?.remove(); conn.hit?.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-  conn.tagSrc && conn.tagSrc.remove(); conn.tagSrc=null;
-  conn.tagDst && conn.tagDst.remove(); conn.tagDst=null;
+  conn.tagSrcEl && conn.tagSrcEl.remove(); conn.tagSrcEl=null;
+  conn.tagDstEl && conn.tagDstEl.remove(); conn.tagDstEl=null;
+  conn.tagSrcStub && conn.tagSrcStub.remove(); conn.tagSrcStub=null;
+  conn.tagDstStub && conn.tagDstStub.remove(); conn.tagDstStub=null;
 
   const s=terminalEdge(conn.from), e=terminalEdge(conn.to);
   let d='';
@@ -707,7 +769,6 @@ function renderConnection(conn){
 function showWireMenu(conn, clientX, clientY){
   menuContext = { conn, clientX, clientY };
   wireMenu.style.display='block';
-  // posiciona evitando salir de pantalla
   const vw = window.innerWidth, vh = window.innerHeight;
   const menuW = 260, menuH = 90;
   let x = clientX, y = clientY;
@@ -723,7 +784,7 @@ menuAddNode.addEventListener('click', ()=>{
   if(!conn) return;
   const pos=clientToWorkspace(clientX, clientY);
   conn.bends.push({x:pos.x,y:pos.y}); orderBends(conn); selectConnection(conn); renderConnection(conn);
-  // escoger el bend recién creado (más cercano al click) y empezar arrastre
+  // seleccionar el bend más cercano y arrastrar
   let idx=0,best=1e9; conn.bends.forEach((b,i)=>{ const dd=Math.hypot(b.x-pos.x,b.y-pos.y); if(dd<best){best=dd; idx=i;} });
   startDraggingHandle(conn, idx);
 });
@@ -761,7 +822,7 @@ function removeNode(node){
   updateConnections();
 }
 
-/* Lógica */
+/* Lógica de compuertas */
 function evaluateGate(type,inputs){
   if(inputs.length===0) return 0;
   switch(type){
@@ -826,8 +887,7 @@ document.getElementById('deleteBtn').addEventListener('click', ()=>{
   if(selectedNode){ removeNode(selectedNode); return; }
   if(selectedConn){ removeConnection(selectedConn); updateConnections(); return; }
   if(selectedTag){
-    // eliminar etiquetas (la conexión completa en modo etiqueta)
-    const conn = connections.find(c=> c.tagSrc===selectedTag || c.tagDst===selectedTag );
+    const conn = connections.find(c=> c.tagSrcEl===selectedTag || c.tagDstEl===selectedTag );
     if(conn){ removeConnection(conn); updateConnections(); }
     selectedTag=null;
   }
@@ -840,7 +900,7 @@ document.addEventListener('keydown', (e)=>{
     if(selectedNode) removeNode(selectedNode);
     else if(selectedConn){ removeConnection(selectedConn); updateConnections(); }
     else if(selectedTag){
-      const conn = connections.find(c=> c.tagSrc===selectedTag || c.tagDst===selectedTag );
+      const conn = connections.find(c=> c.tagSrcEl===selectedTag || c.tagDstEl===selectedTag );
       if(conn){ removeConnection(conn); updateConnections(); }
       selectedTag=null;
     }
@@ -853,7 +913,7 @@ window.addEventListener('resize', updateConnections);
 
 /* Init */
 updateConnections();
-console.log("SIMUPASIR: Menú en long-press de cable (nodo / etiqueta).");
+console.log("SIMUPASIR: Etiquetas con stub conectado y apilado por pin.");
 </script>
 </body>
 </html>
