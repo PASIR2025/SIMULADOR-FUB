@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>SIMUPASIR — móvil</title>
+<title>SIMUPASIR — móvil + etiquetas</title>
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#003366">
@@ -33,7 +33,7 @@
   html,body { height:100%; }
   body { margin:0; font-family: Inter, Arial, Helvetica, sans-serif; display:flex; height:100vh; overflow:hidden; background:#fff; }
 
-  /* Sidebar (angosto) */
+  /* Sidebar angosto */
   #sidebar {
     width:150px;
     background:var(--sidebar);
@@ -71,23 +71,23 @@
   }
   .label{
     font-weight:900; margin-bottom:6px; pointer-events:none; color:#222;
-    font-size:35px;   /* nombres de bloque estilo LOGO! Soft */
+    font-size:60px;   /* 35px * 1.7 => ~60px (70% más) */
     line-height:1.05;
   }
   .selected{ box-shadow:0 10px 18px rgba(0,0,0,.12); border-color:#0058a3!important; transform:translateY(-2px); }
 
-  /* Badge / código del bloque (para todo excepto I/Q/M) */
+  /* Badge / código del bloque (50% más grande: 12px -> 18px) */
   .badge {
     position: absolute;
     top: 6px;
     left: 6px;
-    padding: 2px 6px;
-    border-radius: 8px;
+    padding: 3px 8px;
+    border-radius: 10px;
     border: 2px solid #003366;
     background: #fff;
     color: #003366;
     font-weight: 900;
-    font-size: 12px;
+    font-size: 18px;   /* 50% más grande */
     line-height: 1;
     pointer-events: none;
     user-select: none;
@@ -126,7 +126,7 @@
 
   .term-label{ position:absolute; left:calc(-1 * var(--pin-long) - 36px); width:40px; text-align:right; font-size:12px; color:#222; user-select:none; }
 
-  /* Cables + hitbox cómodo (5px de stroke) */
+  /* Cables + hitbox cómodo (5px de stroke real) */
   #wires{ position:absolute; top:0; left:0; width:var(--workspace-size); height:var(--workspace-size); pointer-events:auto; z-index:6; }
   .wire-hit{ fill:none; stroke:#000; stroke-width:40; stroke-opacity:0; vector-effect:non-scaling-stroke; pointer-events:stroke; stroke-linecap:round; }
   .wire-path{ fill:none; stroke:var(--wire); stroke-width:5; vector-effect:non-scaling-stroke; pointer-events:stroke; }
@@ -138,6 +138,15 @@
   .bend-handle{ fill:#fff; stroke:#0078d7; stroke-width:2.5px; r:11; cursor:grab; pointer-events:all; }
   .bend-handle.dragging{ fill:#e6f3ff; }
   .bend-hit{ fill:#000; fill-opacity:0; r:24; pointer-events:all; }
+
+  /* TAGS de conexión (modo etiqueta) */
+  .conn-tag{
+    position:absolute; transform:translate(-50%,-50%);
+    background:#fff; border:2px solid #003366; color:#003366;
+    border-radius:10px; padding:2px 6px; font-weight:900; font-size:14px; line-height:1;
+    box-shadow:0 2px 0 rgba(0,0,0,.06); user-select:none;
+  }
+  .conn-tag-src{ background:#003366; color:#fff; }
 
   /* Controles */
   #controls{
@@ -167,18 +176,10 @@
   }
 
   /* Modal paleta */
-  #paletteModal{
-    position:fixed; inset:0; display:none; z-index:220; background:rgba(0,0,0,.35);
-  }
-  #paletteSheet{
-    position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:16px 16px 0 0;
-    padding:14px; border-top:3px solid #003366;
-  }
+  #paletteModal{ position:fixed; inset:0; display:none; z-index:220; background:rgba(0,0,0,.35); }
+  #paletteSheet{ position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:16px 16px 0 0; padding:14px; border-top:3px solid #003366; }
   #paletteGrid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
-  .pick{
-    background:#fff8dc; border:2px solid #7a7a7a; border-radius:10px; padding:10px;
-    font-weight:800; font-size:20px; text-align:center; cursor:pointer;
-  }
+  .pick{ background:#fff8dc; border:2px solid #7a7a7a; border-radius:10px; padding:10px; font-weight:800; font-size:20px; text-align:center; cursor:pointer; }
 
   @supports(padding:max(0px)){
     #controls { bottom: calc(12px + env(safe-area-inset-bottom)); }
@@ -230,6 +231,7 @@
       - Pan con un dedo. Pellizca para zoom. <br>
       - Toca salida (pin azul) → entrada. <br>
       - Mantén presionado un cable para agregar un nodo y arrástralo. <br>
+      - Doble toque en un cable ⇒ lo convierte en etiqueta (reduce cableado).<br>
       - Toca el fondo para des-seleccionar.
     </div>
   </div>
@@ -252,7 +254,7 @@
   </div>
 
 <script>
-/* ===== PWA básico (no tocamos manifest/SW aún) ===== */
+/* ===== PWA básico (manifest/SW mínimos ya listos en archivos externos) ===== */
 let deferredPrompt=null;
 const installBtn=document.getElementById('installBtn');
 window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; installBtn.style.display='block'; });
@@ -277,13 +279,16 @@ let longPressTimer=null;
 let currentToPlace=null;
 let selectedPinEl=null;
 
+/* Doble tap detection */
+let lastTapTime=0, lastTapTarget=null, DBL_TAP_MS=350;
+
 /* RAF para suavizar arrastre de bend */
 let bendRaf=null, bendRafConn=null;
 
 /* Utilidades */
 function zpad(n,len=3){ return String(n).padStart(len,'0'); }
 
-/* Etiquetas estilo LOGO! Soft (texto grande del bloque) */
+/* Etiquetas estilo LOGO! Soft */
 function logoLabelForType(type){
   switch(type){
     case 'and':  return '&';
@@ -434,10 +439,18 @@ canvas.addEventListener('click', e=>{
 /* Selección general / conexiones */
 function removeConnection(conn){
   if(!conn) return;
+  // si hay temporizadores pendientes de longpress que agregaban bends, cancela
+  if(conn._lpCancel && typeof conn._lpCancel === 'function'){ conn._lpCancel(); }
+  // si estábamos arrastrando su bend, cancelar
+  if(draggingBend && draggingBend.conn===conn){ stopDraggingHandle(); }
+
   const i=connections.indexOf(conn); if(i>=0) connections.splice(i,1);
   conn.path && conn.path.remove();
   conn.hit && conn.hit.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
+  // etiquetas (modo label)
+  conn.tagSrc && conn.tagSrc.remove();
+  conn.tagDst && conn.tagDst.remove();
   if(selectedConn===conn) selectedConn=null;
 }
 function selectConnection(conn){
@@ -547,7 +560,6 @@ function dragMove(el,node){
 function enableConnections(node){
   const handler = el=>{
     if(simulation) return;
-
     if(el.classList.contains('output')){
       selectedPinEl?.classList.remove('pin-selected');
       selectedPinEl=el; el.classList.add('pin-selected');
@@ -623,16 +635,82 @@ function onBendMoveTouch(ev){
   scheduleBendRender(conn);
 }
 
-/* Conexión */
+/* Texto etiqueta destino: Bxxx/n o Qk/n, Ik/n, Mk/n */
+function getDestTag(conn){
+  const dstNode = nodes.find(n=>n.inputs.includes(conn.to));
+  let pinIndex = 1 + (dstNode ? dstNode.inputs.indexOf(conn.to) : 0);
+  if(!dstNode) return '??';
+  if(dstNode.type==='output') return `${dstNode.name}/${pinIndex}`;
+  if(dstNode.type==='input')  return `${dstNode.name}/${pinIndex}`;
+  if(dstNode.type==='M')      return `${dstNode.name}/${pinIndex}`;
+  return `${dstNode.code||'B???'}/${pinIndex}`;
+}
+
+/* Posicionar tag al lado del pin */
+function placeTagAtPin(pinEl, text, isSource){
+  const tag = document.createElement('div');
+  tag.className = 'conn-tag' + (isSource ? ' conn-tag-src' : '');
+  tag.textContent = text;
+  workspace.appendChild(tag);
+  // Posición
+  const e = terminalEdge(pinEl);
+  const dx = isSource ? 16 : -16;
+  tag.style.left = (e.x + dx) + 'px';
+  tag.style.top  = (e.y - 16) + 'px';
+  // Interacciones básicas: seleccionar al tocar
+  tag.addEventListener('click', (ev)=>{ ev.stopPropagation(); const c=findConnForTag(tag); if(c) selectConnection(c); });
+  tag.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); const c=findConnForTag(tag); if(c) selectConnection(c); }, {passive:true});
+  return tag;
+}
+function findConnForTag(tag){
+  return connections.find(c=> c.tagSrc===tag || c.tagDst===tag );
+}
+
+/* Convertir una conexión cableada a etiquetas (doble tap) */
+function convertWireToLabel(conn){
+  // Evitar que un longpress tardío “recreé” el cable
+  if(conn._lpCancel && typeof conn._lpCancel==='function'){ conn._lpCancel(); }
+  // Quitar paths/hits
+  conn.path && conn.path.remove();
+  conn.hit && conn.hit.remove();
+  (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
+
+  const dstText = getDestTag(conn);
+  // Tag en la salida: muestra a dónde va
+  conn.tagSrc = placeTagAtPin(conn.from, dstText, true);
+  // Tag en la entrada: muestra el mismo destino
+  conn.tagDst = placeTagAtPin(conn.to, dstText, false);
+
+  // Marcar como modo etiqueta
+  conn.mode = 'label';
+}
+
+/* Crear conexión */
 function createConnection(fromTerm,toTerm){
   if(simulation) return;
   if(connections.find(c=>c.from===fromTerm && c.to===toTerm)) return;
-  const conn={ from:fromTerm, to:toTerm, path:null, hit:null, bends:[], handles:[], selected:false };
+  const conn={ from:fromTerm, to:toTerm, path:null, hit:null, bends:[], handles:[], selected:false, mode:'wire' };
   connections.push(conn); renderConnection(conn);
 }
+
+/* Render de conexión */
 function renderConnection(conn){
+  // Si es etiqueta, sólo asegura que las tags estén en su sitio y sal
+  if(conn.mode==='label'){
+    conn.path && conn.path.remove();
+    conn.hit && conn.hit.remove();
+    (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
+    // Reposicionar tags si cambia zoom/pan
+    if(conn.tagSrc){ const e=terminalEdge(conn.from); conn.tagSrc.style.left=(e.x+16)+'px'; conn.tagSrc.style.top=(e.y-16)+'px'; }
+    if(conn.tagDst){ const e=terminalEdge(conn.to);   conn.tagDst.style.left=(e.x-16)+'px'; conn.tagDst.style.top=(e.y-16)+'px'; }
+    return;
+  }
+
+  // Modo cable normal:
   conn.path?.remove(); conn.hit?.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
+  conn.tagSrc && conn.tagSrc.remove(); conn.tagSrc=null;
+  conn.tagDst && conn.tagDst.remove(); conn.tagDst=null;
 
   const s=terminalEdge(conn.from), e=terminalEdge(conn.to);
   let d='';
@@ -658,12 +736,44 @@ function renderConnection(conn){
   hit.addEventListener('touchstart',onSelect,{passive:true});
   hit.addEventListener('contextmenu',(ev)=>{ ev.preventDefault(); if(simulation) return; removeConnection(conn); });
 
+  /* Doble tap / doble click ⇒ convertir a etiqueta */
+  function tryDoubleTap(ev){
+    const now=Date.now();
+    if(lastTapTarget===hit && (now-lastTapTime)<=DBL_TAP_MS){
+      // Doble tap confirmado
+      ev.preventDefault(); ev.stopPropagation();
+      // Si el conn ya fue eliminado entre el primer y segundo tap, aborta
+      if(!connections.includes(conn)) return;
+      convertWireToLabel(conn);
+      lastTapTarget=null; lastTapTime=0;
+      return true;
+    }else{
+      lastTapTarget=hit; lastTapTime=now;
+      return false;
+    }
+  }
+  hit.addEventListener('touchstart', (ev)=>{ if(tryDoubleTap(ev)) return; }, {passive:false});
+  hit.addEventListener('click', (ev)=>{ // en desktop, click rápido dos veces
+    const now=Date.now();
+    if(lastTapTarget===hit && (now-lastTapTime)<=DBL_TAP_MS){ ev.preventDefault(); ev.stopPropagation(); if(!connections.includes(conn)) return; convertWireToLabel(conn); lastTapTarget=null; lastTapTime=0; }
+    else { lastTapTarget=hit; lastTapTime=now; }
+  });
+
+  // Long press para agregar bend
   function onPathDown(ev){
     if(simulation) return;
     if(ev.type==='mousedown' && ev.button!==0) return;
     ev.stopPropagation();
-    if(longPressTimer){ clearTimeout(longPressTimer); }
+    // setup cancel guard para evitar “cables fantasma” post-eliminación
+    let cancelled=false;
+    const cancel=()=>{ cancelled=true; if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer=null; } document.removeEventListener('mouseup',cancel); document.removeEventListener('touchend',cancel); };
+    document.addEventListener('mouseup',cancel,{once:true});
+    document.addEventListener('touchend',cancel,{once:true,passive:true});
+    conn._lpCancel = cancel;
+
     longPressTimer=setTimeout(()=>{
+      if(cancelled) return;               // conexión eliminada o cancelada
+      if(!connections.includes(conn)) return; // ya no existe
       const clientX=(ev.type==='mousedown')?ev.clientX:(ev.touches?.[0]?.clientX ?? ev.clientX);
       const clientY=(ev.type==='mousedown')?ev.clientY:(ev.touches?.[0]?.clientY ?? ev.clientY);
       const pos=clientToWorkspace(clientX,clientY);
@@ -671,9 +781,6 @@ function renderConnection(conn){
       let idx=0, best=1e9; conn.bends.forEach((b,i)=>{ const dd=Math.hypot(b.x-pos.x,b.y-pos.y); if(dd<best){best=dd; idx=i;} });
       startDraggingHandle(conn,idx);
     },400);
-    const cancel=()=>{ if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer=null; } };
-    document.addEventListener('mouseup',cancel,{once:true});
-    document.addEventListener('touchend',cancel,{once:true,passive:true});
   }
   path.addEventListener('mousedown',onPathDown);
   path.addEventListener('touchstart',onPathDown,{passive:false});
@@ -782,28 +889,6 @@ function scanLogic(){
   updateConnections();
 }
 
-/* Conexión desde pines (con feedback) */
-function enableConnections(node){
-  const handler = el=>{
-    if(simulation) return;
-
-    if(el.classList.contains('output')){
-      selectedPinEl?.classList.remove('pin-selected');
-      selectedPinEl=el; el.classList.add('pin-selected');
-      pendingOutput=el; showGhost(el); return;
-    }
-    if(el.classList.contains('input')){
-      el.classList.add('pin-target'); setTimeout(()=>el.classList.remove('pin-target'),300);
-      if(!pendingOutput) return;
-      if(pendingOutput===el){ removeGhost(); selectedPinEl?.classList.remove('pin-selected'); selectedPinEl=null; pendingOutput=null; return; }
-      createConnection(pendingOutput, el);
-      removeGhost(); selectedPinEl?.classList.remove('pin-selected'); selectedPinEl=null; pendingOutput=null;
-    }
-  };
-  node.output && node.output.addEventListener('click', ()=>handler(node.output));
-  node.inputs.forEach(inp=>inp.addEventListener('click', ()=>handler(inp)));
-}
-
 /* Botones */
 document.getElementById('simulate').addEventListener('click', ()=>{
   if(simulation) return;
@@ -831,6 +916,8 @@ document.addEventListener('keydown', (e)=>{
     if(selectedNode) removeNode(selectedNode);
     else if(selectedConn) { removeConnection(selectedConn); updateConnections(); }
   }
+  // Esc para limpiar último doble tap objetivo (por si acaso)
+  if(e.key==='Escape'){ lastTapTarget=null; lastTapTime=0; }
 });
 
 /* Redibuja en resize */
@@ -838,7 +925,7 @@ window.addEventListener('resize', updateConnections);
 
 /* Init */
 updateConnections();
-console.log("SIMUPASIR: Inserción habilitada en móvil con paleta flotante.");
+console.log("SIMUPASIR: Doble-tap en cable => etiqueta. Tamaños ajustados.");
 </script>
 </body>
 </html>
