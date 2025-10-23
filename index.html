@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>SIMUPASIR — móvil + etiquetas</title>
+<title>SIMUPASIR — móvil + menú en cable</title>
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#003366">
@@ -21,174 +21,103 @@
     --neon:#00ff66;
     --accent:#444;
 
-    /* Pines (móvil) */
-    --pin-long:24px;          /* largo visible para pines rectangulares */
-    --pin-hit-h:28px;         /* alto del hitbox real para toque */
-    --pin-visible-h:7px;      /* alto visible del pin rectangular */
-    --round-pin:28px;         /* diámetro pin redondo (doble tamaño) */
+    --pin-long:24px;          /* largo visible recto */
+    --pin-hit-h:28px;         /* alto hitbox toque */
+    --pin-visible-h:7px;      /* alto visible */
+    --round-pin:28px;         /* salida circular negra (doble) */
 
     --workspace-size:5000px;
   }
 
-  html,body { height:100%; }
-  body { margin:0; font-family: Inter, Arial, Helvetica, sans-serif; display:flex; height:100vh; overflow:hidden; background:#fff; }
+  html,body{height:100%}
+  body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;display:flex;height:100vh;overflow:hidden;background:#fff}
 
   /* Sidebar angosto */
-  #sidebar {
-    width:150px;
-    background:var(--sidebar);
-    padding:10px;
-    border-right:3px solid #bdb089;
-    display:flex; flex-direction:column; gap:8px;
-    box-sizing:border-box; z-index:60;
-  }
-  #sidebar > div[style*="font-weight"] { font-size:13px; }
-  .component{
-    background:var(--node);
-    border:2px solid #7a7a7a;
-    border-radius:8px;
-    padding:6px;
-    text-align:center;
-    cursor:grab;
-    user-select:none;
-    font-weight:700;
-    font-size:20px;  /* nombres en biblioteca 20px */
-    line-height:1.05;
-    box-shadow:0 2px 0 rgba(0,0,0,.06);
-  }
-  .component.selected{ outline:3px solid #0078d7; outline-offset:2px; }
+  #sidebar{width:150px;background:var(--sidebar);padding:10px;border-right:3px solid #bdb089;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;z-index:60}
+  #sidebar > div[style*="font-weight"]{font-size:13px}
+  .component{background:var(--node);border:2px solid #7a7a7a;border-radius:8px;padding:6px;text-align:center;cursor:grab;user-select:none;font-weight:700;font-size:20px;line-height:1.05;box-shadow:0 2px 0 rgba(0,0,0,.06)}
+  .component.selected{outline:3px solid #0078d7;outline-offset:2px}
 
-  /* Canvas & workspace */
-  #canvas { flex:1; background:#ffffff; position:relative; overflow:hidden; touch-action:none; }
-  #workspace { position:absolute; top:0; left:0; width:var(--workspace-size); height:var(--workspace-size); transform-origin:0 0; background:transparent; }
+  /* Canvas */
+  #canvas{flex:1;background:#fff;position:relative;overflow:hidden;touch-action:none}
+  #workspace{position:absolute;top:0;left:0;width:var(--workspace-size);height:var(--workspace-size);transform-origin:0 0;background:transparent}
 
   /* Bloques */
-  .node{
-    position:absolute; background:var(--node); border:3px solid var(--accent); border-radius:10px;
-    width:150px; height:225px; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    text-align:center; cursor:move; user-select:none; padding:8px; box-sizing:border-box;
-    box-shadow:0 6px 0 rgba(0,0,0,0.06); z-index:10; touch-action:none;
-  }
-  .label{
-    font-weight:900; margin-bottom:6px; pointer-events:none; color:#222;
-    font-size:60px;   /* 35px * 1.7 => ~60px (70% más) */
-    line-height:1.05;
-  }
-  .selected{ box-shadow:0 10px 18px rgba(0,0,0,.12); border-color:#0058a3!important; transform:translateY(-2px); }
+  .node{position:absolute;background:var(--node);border:3px solid var(--accent);border-radius:10px;width:150px;height:225px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:move;user-select:none;padding:8px;box-sizing:border-box;box-shadow:0 6px 0 rgba(0,0,0,.06);z-index:10;touch-action:none}
+  .label{font-weight:900;margin-bottom:6px;pointer-events:none;color:#222;font-size:60px;line-height:1.05} /* símbolos 70% más */
+  .selected{box-shadow:0 10px 18px rgba(0,0,0,.12);border-color:#0058a3!important;transform:translateY(-2px)}
 
-  /* Badge / código del bloque (50% más grande: 12px -> 18px) */
-  .badge {
-    position: absolute;
-    top: 6px;
-    left: 6px;
-    padding: 3px 8px;
-    border-radius: 10px;
-    border: 2px solid #003366;
-    background: #fff;
-    color: #003366;
-    font-weight: 900;
-    font-size: 18px;   /* 50% más grande */
-    line-height: 1;
-    pointer-events: none;
-    user-select: none;
-    box-shadow: 0 2px 0 rgba(0,0,0,.06);
-  }
+  /* Badge B001… (50% más grande) */
+  .badge{position:absolute;top:6px;left:6px;padding:3px 8px;border-radius:10px;border:2px solid #003366;background:#fff;color:#003366;font-weight:900;font-size:18px;line-height:1;pointer-events:none;user-select:none;box-shadow:0 2px 0 rgba(0,0,0,.06)}
 
   /* Pines con hitbox grande */
-  .terminal{
-    position:absolute; cursor:pointer; border-radius:8px; box-shadow:0 1px 0 rgba(0,0,0,.08);
-    height:var(--pin-hit-h); background:transparent;
-  }
-  .terminal::before{
-    content:""; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%);
-    height:var(--pin-visible-h); border-radius:4px; background:var(--pin); display:block;
-  }
-  .terminal.input  { width:var(--pin-long); left:calc(-1 * var(--pin-long)); }
-  .terminal.output { width:var(--pin-long); right:calc(-1 * var(--pin-long)); top:50%; transform:translateY(-50%); }
+  .terminal{position:absolute;cursor:pointer;border-radius:8px;box-shadow:0 1px 0 rgba(0,0,0,.08);height:var(--pin-hit-h);background:transparent}
+  .terminal::before{content:"";position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:var(--pin-visible-h);border-radius:4px;background:var(--pin);display:block}
+  .terminal.input{width:var(--pin-long);left:calc(-1 * var(--pin-long))}
+  .terminal.output{width:var(--pin-long);right:calc(-1 * var(--pin-long));top:50%;transform:translateY(-50%)}
 
-  /* Salida circular negra para NOT, NAND y NOR (pegada al bloque) */
-  .terminal.output.out-round{
-    width:var(--round-pin);
-    right:calc(-1 * var(--round-pin));   /* el borde del círculo toca el bloque */
-  }
-  .terminal.output.out-round::before{
-    width:var(--round-pin);
-    height:var(--round-pin);
-    border-radius:50%;
-    background:#000;                     /* negro */
-    left:auto; right:0;                  /* pegado al bloque */
-  }
+  /* Salida circular negra (NOT/NAND/NOR) */
+  .terminal.output.out-round{width:var(--round-pin);right:calc(-1 * var(--round-pin))}
+  .terminal.output.out-round::before{width:var(--round-pin);height:var(--round-pin);border-radius:50%;background:#000;left:auto;right:0}
 
-  /* Feedback pines */
-  .terminal.pin-selected::before { background:#0078d7 !important; box-shadow:0 0 0 3px rgba(0,120,215,.25); }
-  .terminal.pin-target { outline:2px solid #0078d7; outline-offset:2px; }
-  .terminal.signal-on::before { background:var(--neon) !important; }
+  .terminal.pin-selected::before{background:#0078d7!important;box-shadow:0 0 0 3px rgba(0,120,215,.25)}
+  .terminal.pin-target{outline:2px solid #0078d7;outline-offset:2px}
+  .terminal.signal-on::before{background:var(--neon)!important}
 
-  .term-label{ position:absolute; left:calc(-1 * var(--pin-long) - 36px); width:40px; text-align:right; font-size:12px; color:#222; user-select:none; }
+  .term-label{position:absolute;left:calc(-1 * var(--pin-long) - 36px);width:40px;text-align:right;font-size:12px;color:#222;user-select:none}
 
-  /* Cables + hitbox cómodo (5px de stroke real) */
-  #wires{ position:absolute; top:0; left:0; width:var(--workspace-size); height:var(--workspace-size); pointer-events:auto; z-index:6; }
-  .wire-hit{ fill:none; stroke:#000; stroke-width:40; stroke-opacity:0; vector-effect:non-scaling-stroke; pointer-events:stroke; stroke-linecap:round; }
-  .wire-path{ fill:none; stroke:var(--wire); stroke-width:5; vector-effect:non-scaling-stroke; pointer-events:stroke; }
-  .wire-path.signal{ stroke:var(--neon); stroke-width:6; filter:drop-shadow(0 0 8px rgba(0,255,102,.25)); }
-  .wire-path.selected{ stroke:#0078d7; stroke-width:6; }
-  .wire-path.ghost{ stroke-dasharray:6 6; opacity:.75; }
+  /* Cables */
+  #wires{position:absolute;top:0;left:0;width:var(--workspace-size);height:var(--workspace-size);pointer-events:auto;z-index:6}
+  .wire-hit{fill:none;stroke:#000;stroke-width:40;stroke-opacity:0;vector-effect:non-scaling-stroke;pointer-events:stroke;stroke-linecap:round}
+  .wire-path{fill:none;stroke:var(--wire);stroke-width:5;vector-effect:non-scaling-stroke;pointer-events:stroke}
+  .wire-path.signal{stroke:var(--neon);stroke-width:6;filter:drop-shadow(0 0 8px rgba(0,255,102,.25))}
+  .wire-path.selected{stroke:#0078d7;stroke-width:6}
+  .wire-path.ghost{stroke-dasharray:6 6;opacity:.75}
 
-  /* Handles (nodos/bends) */
-  .bend-handle{ fill:#fff; stroke:#0078d7; stroke-width:2.5px; r:11; cursor:grab; pointer-events:all; }
-  .bend-handle.dragging{ fill:#e6f3ff; }
-  .bend-hit{ fill:#000; fill-opacity:0; r:24; pointer-events:all; }
+  /* Handles (nodos) */
+  .bend-handle{fill:#fff;stroke:#0078d7;stroke-width:2.5px;r:11;cursor:grab;pointer-events:all}
+  .bend-handle.dragging{fill:#e6f3ff}
+  .bend-hit{fill:#000;fill-opacity:0;r:24;pointer-events:all}
 
-  /* TAGS de conexión (modo etiqueta) */
-  .conn-tag{
-    position:absolute; transform:translate(-50%,-50%);
-    background:#fff; border:2px solid #003366; color:#003366;
-    border-radius:10px; padding:2px 6px; font-weight:900; font-size:14px; line-height:1;
-    box-shadow:0 2px 0 rgba(0,0,0,.06); user-select:none;
-  }
-  .conn-tag-src{ background:#003366; color:#fff; }
+  /* Etiquetas de conexión */
+  .conn-tag{position:absolute;transform:translate(-50%,-50%);background:#fff;border:2px solid #003366;color:#003366;border-radius:10px;padding:2px 6px;font-weight:900;font-size:14px;line-height:1;box-shadow:0 2px 0 rgba(0,0,0,.06);user-select:none}
+  .conn-tag-src{background:#003366;color:#fff}
+  .conn-tag.selected{outline:3px solid #0078d7;outline-offset:2px}
 
   /* Controles */
-  #controls{
-    position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
-    background:var(--sidebar); padding:8px 12px; border-radius:10px; border:2px solid #bdb089;
-    display:flex; gap:10px; align-items:center; z-index:200;
-  }
-  #controls button{ padding:8px 10px; border-radius:8px; border:1px solid #777; background:#fff; font-weight:700; cursor:pointer; }
-  #zoomIn,#zoomOut{ padding:6px 10px; }
+  #controls{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:var(--sidebar);padding:8px 12px;border-radius:10px;border:2px solid #bdb089;display:flex;gap:10px;align-items:center;z-index:200}
+  #controls button{padding:8px 10px;border-radius:8px;border:1px solid #777;background:#fff;font-weight:700;cursor:pointer}
+  #zoomIn,#zoomOut{padding:6px 10px}
 
-  .q-indicator{ width:18px; height:18px; border-radius:50%; background:#444; margin-top:8px; pointer-events:none; border:2px solid #222; }
-  .q-indicator.on{ background:var(--neon); box-shadow:0 0 8px rgba(0,255,102,.45); }
+  .q-indicator{width:18px;height:18px;border-radius:50%;background:#444;margin-top:8px;pointer-events:none;border:2px solid #222}
+  .q-indicator.on{background:var(--neon);box-shadow:0 0 8px rgba(0,255,102,.45)}
 
-  .hint{ position:absolute; right:12px; top:12px; background:rgba(0,0,0,.05); padding:10px; border-radius:8px; font-size:13px; color:#222; width:320px; z-index:5; pointer-events:none; }
-  #brand{ position:fixed; right:12px; bottom:12px; background:rgba(0,0,0,.06); padding:8px 12px; border-radius:8px; font-weight:900; letter-spacing:1px; z-index:60; box-shadow:0 6px 0 rgba(0,0,0,.04); }
+  .hint{position:absolute;right:12px;top:12px;background:rgba(0,0,0,.05);padding:10px;border-radius:8px;font-size:13px;color:#222;width:320px;z-index:5;pointer-events:none}
+  #brand{position:fixed;right:12px;bottom:12px;background:rgba(0,0,0,.06);padding:8px 12px;border-radius:8px;font-weight:900;letter-spacing:1px;z-index:60;box-shadow:0 6px 0 rgba(0,0,0,.04)}
 
-  #installBtn{
-    display:none; position:fixed; right:12px; bottom:80px; z-index:210;
-    background:#003366; color:#fff; border:none; padding:10px 14px; border-radius:10px; font-weight:900; cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,.12);
-  }
+  #installBtn{display:none;position:fixed;right:12px;bottom:80px;z-index:210;background:#003366;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:900;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.12)}
 
-  /* Botón paleta flotante (móvil) */
-  #fabPalette{
-    position:fixed; left:12px; bottom:12px; z-index:210;
-    background:#003366; color:#fff; border:none; padding:12px 14px; border-radius:999px; font-weight:900; cursor:pointer;
-    box-shadow:0 6px 0 rgba(0,0,0,.12); display:none;
-  }
+  /* FAB y paleta en móvil */
+  #fabPalette{position:fixed;left:12px;bottom:12px;z-index:210;background:#003366;color:#fff;border:none;padding:12px 14px;border-radius:999px;font-weight:900;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.12);display:none}
+  #paletteModal{position:fixed;inset:0;display:none;z-index:220;background:rgba(0,0,0,.35)}
+  #paletteSheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:14px;border-top:3px solid #003366}
+  #paletteGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .pick{background:#fff8dc;border:2px solid #7a7a7a;border-radius:10px;padding:10px;font-weight:800;font-size:20px;text-align:center;cursor:pointer}
 
-  /* Modal paleta */
-  #paletteModal{ position:fixed; inset:0; display:none; z-index:220; background:rgba(0,0,0,.35); }
-  #paletteSheet{ position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:16px 16px 0 0; padding:14px; border-top:3px solid #003366; }
-  #paletteGrid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; }
-  .pick{ background:#fff8dc; border:2px solid #7a7a7a; border-radius:10px; padding:10px; font-weight:800; font-size:20px; text-align:center; cursor:pointer; }
+  /* Menú contextual del cable */
+  #wireMenu{position:fixed;z-index:230;display:none;background:#fff;border:2px solid #003366;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.18);overflow:hidden}
+  #wireMenu button{display:block;width:100%;background:#fff;border:0;border-bottom:1px solid #e5e5e5;padding:10px 14px;font-weight:800;cursor:pointer;text-align:left}
+  #wireMenu button:last-child{border-bottom:0}
+  #wireMenu button:hover{background:#f5f9ff}
 
   @supports(padding:max(0px)){
-    #controls { bottom: calc(12px + env(safe-area-inset-bottom)); }
-    #installBtn { bottom: calc(80px + env(safe-area-inset-bottom)); }
-    #fabPalette { bottom: calc(12px + env(safe-area-inset-bottom)); }
+    #controls{bottom:calc(12px + env(safe-area-inset-bottom))}
+    #installBtn{bottom:calc(80px + env(safe-area-inset-bottom))}
+    #fabPalette{bottom:calc(12px + env(safe-area-inset-bottom))}
   }
   @media (max-width:720px){
-    #sidebar{ display:none; }      /* oculto en móvil */
-    #fabPalette{ display:block; }  /* aparece botón paleta */
+    #sidebar{display:none}
+    #fabPalette{display:block}
   }
 </style>
 </head>
@@ -210,7 +139,7 @@
     <div style="height:4px"></div>
     <div class="component" draggable="true" data-type="sr">SR (Set/Reset)</div>
     <div style="flex:1"></div>
-    <div style="font-size:11px;color:#333">Arrastra (PC) o toca el área para colocar. Conecta: salida → entrada.</div>
+    <div style="font-size:11px;color:#333">Arrastra (PC) o usa el botón 🧩 para colocar. Conecta: salida → entrada.</div>
   </div>
 
   <div id="canvas">
@@ -230,16 +159,13 @@
     <div class="hint">
       - Pan con un dedo. Pellizca para zoom. <br>
       - Toca salida (pin azul) → entrada. <br>
-      - Mantén presionado un cable para agregar un nodo y arrástralo. <br>
-      - <strong>Doble toque en un cable</strong> ⇒ se elimina y se crean etiquetas (origen/destino).<br>
+      - Mantén presionado un cable para opciones (nodo / etiqueta).<br>
       - Toca el fondo para des-seleccionar.
     </div>
   </div>
 
   <div id="brand">SIMUPASIR</div>
   <button id="installBtn">Instalar SIMUPASIR</button>
-
-  <!-- Botón paleta flotante (móvil) -->
   <button id="fabPalette">🧩 Bloques</button>
 
   <!-- Modal paleta -->
@@ -251,6 +177,12 @@
         <button id="closePalette" style="padding:8px 12px;border-radius:8px;border:1px solid #777;background:#fff;font-weight:700">Cerrar</button>
       </div>
     </div>
+  </div>
+
+  <!-- Menú contextual del cable -->
+  <div id="wireMenu">
+    <button id="menuAddNode">➕ Crear nodo para acomodar</button>
+    <button id="menuMakeLabel">🏷️ Crear etiqueta y eliminar cable</button>
   </div>
 
 <script>
@@ -274,21 +206,23 @@ let blockCodeCount=0;  // B001, B002, ...
 let scale=1, panX=0, panY=0, isPanning=false, panStartX=0, panStartY=0;
 let simTimer=null, SCAN_MS=60;
 let selectedNode=null, selectedConn=null;
+let selectedTag=null;
 let draggingBend=null;
 let longPressTimer=null;
 let currentToPlace=null;
 let selectedPinEl=null;
 
-/* Doble tap detection */
-let lastTapTime=0, lastTapTarget=null, DBL_TAP_MS=350;
+/* Menú contextual en cables */
+const wireMenu = document.getElementById('wireMenu');
+const menuAddNode = document.getElementById('menuAddNode');
+const menuMakeLabel = document.getElementById('menuMakeLabel');
+let menuContext = { conn:null, clientX:0, clientY:0 };
 
-/* RAF para suavizar arrastre de bend */
+/* RAF bend */
 let bendRaf=null, bendRafConn=null;
 
 /* Utilidades */
 function zpad(n,len=3){ return String(n).padStart(len,'0'); }
-
-/* Etiquetas estilo LOGO! Soft */
 function logoLabelForType(type){
   switch(type){
     case 'and':  return '&';
@@ -303,8 +237,6 @@ function logoLabelForType(type){
     default:     return (type||'').toUpperCase();
   }
 }
-
-/* Coords */
 function clientToWorkspace(clientX, clientY){
   const rect = canvas.getBoundingClientRect();
   return { x:(clientX-rect.left-panX)/scale, y:(clientY-rect.top-panY)/scale };
@@ -402,22 +334,14 @@ canvas.addEventListener("drop", e=>{
   if(!type) return; const pos=clientToWorkspace(e.clientX,e.clientY); createNode(type,pos.x,pos.y);
 });
 
-/* Paleta flotante (móvil) */
+/* Paleta (móvil) */
 const fab = document.getElementById('fabPalette');
 const modal = document.getElementById('paletteModal');
 const grid = document.getElementById('paletteGrid');
 const closePalette = document.getElementById('closePalette');
 const PALETTE_TYPES = ['input','output','M','and','or','not','nand','nor','xor','xnor','sr'];
-
 function openPalette(){
-  grid.innerHTML = '';
-  PALETTE_TYPES.forEach(t=>{
-    const btn = document.createElement('button');
-    btn.className='pick';
-    btn.textContent = t.toUpperCase();
-    btn.onclick = ()=>{ currentToPlace = t; closePaletteModal(); };
-    grid.appendChild(btn);
-  });
+  grid.innerHTML=''; PALETTE_TYPES.forEach(t=>{ const b=document.createElement('button'); b.className='pick'; b.textContent=t.toUpperCase(); b.onclick=()=>{ currentToPlace=t; closePaletteModal(); }; grid.appendChild(b); });
   modal.style.display='block'; modal.setAttribute('aria-hidden','false');
 }
 function closePaletteModal(){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }
@@ -425,7 +349,7 @@ fab.addEventListener('click', openPalette);
 closePalette.addEventListener('click', closePaletteModal);
 modal.addEventListener('click', (e)=>{ if(e.target===modal) closePaletteModal(); });
 
-/* Tap para colocar (cuando hay tipo seleccionado) o deseleccionar */
+/* Tap para colocar o deseleccionar */
 canvas.addEventListener('click', e=>{
   if(e.target===workspace || e.target===wiresSVG){
     if(currentToPlace){
@@ -439,20 +363,17 @@ canvas.addEventListener('click', e=>{
 /* Selección general / conexiones */
 function removeConnection(conn){
   if(!conn) return;
-  if(conn._lpCancel && typeof conn._lpCancel === 'function'){ conn._lpCancel(); }
+  if(conn._lpCancel && typeof conn._lpCancel==='function'){ conn._lpCancel(); }
   if(draggingBend && draggingBend.conn===conn){ stopDraggingHandle(); }
-
   const i=connections.indexOf(conn); if(i>=0) connections.splice(i,1);
-  conn.path && conn.path.remove();
-  conn.hit && conn.hit.remove();
+  conn.path && conn.path.remove(); conn.hit && conn.hit.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-  conn.tagSrc && conn.tagSrc.remove();
-  conn.tagDst && conn.tagDst.remove();
+  conn.tagSrc && conn.tagSrc.remove(); conn.tagDst && conn.tagDst.remove();
   if(selectedConn===conn) selectedConn=null;
+  if(selectedTag && (selectedTag===conn.tagSrc || selectedTag===conn.tagDst)){ selectedTag.classList.remove('selected'); selectedTag=null; }
 }
 function selectConnection(conn){
   if(simulation) return;
-  selectedConn?.path?.classList.remove('selected');
   clearSelection();
   selectedConn=conn; conn.selected=true; conn.path?.classList.add('selected');
   renderConnection(conn);
@@ -461,8 +382,9 @@ function selectNode(node){ if(simulation) return; clearSelection(); selectedNode
 function clearSelection(){
   if(selectedNode){ selectedNode.el.classList.remove('selected'); selectedNode=null; }
   if(selectedConn){ selectedConn.path?.classList.remove('selected'); selectedConn.selected=false; selectedConn=null; }
+  if(selectedTag){ selectedTag.classList.remove('selected'); selectedTag=null; }
   if(selectedPinEl){ selectedPinEl.classList.remove('pin-selected'); selectedPinEl=null; }
-  pendingOutput=null; removeGhost();
+  pendingOutput=null; removeGhost(); hideWireMenu();
   if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer=null; }
   connections.forEach(c=>{ (c.handles||[]).forEach(h=>h.remove()); c.handles=[]; });
 }
@@ -471,7 +393,6 @@ function clearSelection(){
 function createNode(type,x,y){
   const div=document.createElement('div'); div.className='node'; div.style.left=x+'px'; div.style.top=y+'px';
 
-  // Etiqueta estilo LOGO! Soft
   let display = logoLabelForType(type);
   if(type==='input')  display = `I${++inputCount}`;
   else if(type==='output') display = `Q${++outputCount}`;
@@ -488,7 +409,7 @@ function createNode(type,x,y){
   const qind=document.createElement('div'); qind.className='q-indicator off'; div.appendChild(qind);
 
   const output=document.createElement('div'); output.className='terminal output';
-  if(type==='not' || type==='nand' || type==='nor'){ output.classList.add('out-round'); } /* salida circular negra */
+  if(type==='not' || type==='nand' || type==='nor'){ output.classList.add('out-round'); }
   div.appendChild(output);
 
   const inputs=[];
@@ -553,7 +474,7 @@ function dragMove(el,node){
   function onTouchEnd(){ dragging=false; document.removeEventListener('touchmove',onTouchMove); document.removeEventListener('touchend',onTouchEnd); }
 }
 
-/* Conexiones y pines azules */
+/* Conexiones y pines */
 function enableConnections(node){
   const handler = el=>{
     if(simulation) return;
@@ -574,7 +495,7 @@ function enableConnections(node){
   node.inputs.forEach(inp=>inp.addEventListener('click', ()=>handler(inp)));
 }
 
-/* Ghost provisional */
+/* Ghost provisional al crear conexión */
 function showGhost(fromTerm){
   removeGhost();
   const s=terminalEdge(fromTerm);
@@ -593,7 +514,70 @@ function trackGhost(e){ if(!pendingGhost||!pendingOutput) return; const p=client
 function trackGhostTouch(e){ if(!pendingGhost||!pendingOutput) return; const t=e.touches[0]; const p=clientToWorkspace(t.clientX,t.clientY); const s=terminalEdge(pendingOutput); updateGhostPath(pendingGhost,s.x,s.y,p.x,p.y); e.preventDefault(); }
 function updateGhostPath(path,sx,sy,ex,ey){ const midX=(sx+ex)/2; path.setAttribute('d',`M${sx},${sy} L${midX},${sy} L${midX},${ey} L${ex},${ey}`); }
 
-/* Arrastre de nodo (bend) con RAF */
+/* ===== Etiquetas ===== */
+function getSourceName(conn){
+  const srcNode = nodes.find(n=>n.output===conn.from);
+  if(!srcNode) return '??';
+  if(srcNode.type==='input' || srcNode.type==='output' || srcNode.type==='M') return srcNode.name;
+  return srcNode.code || 'B???';
+}
+function getDestNameWithPin(conn){
+  const dstNode = nodes.find(n=>n.inputs.includes(conn.to));
+  if(!dstNode) return '??';
+  const pinIndex = 1 + dstNode.inputs.indexOf(conn.to);
+  if(dstNode.type==='input' || dstNode.type==='output' || dstNode.type==='M') return `${dstNode.name}/${pinIndex}`;
+  return `${dstNode.code || 'B???'}/${pinIndex}`;
+}
+function placeTagAtPin(pinEl, text, isSource){
+  const tag = document.createElement('div');
+  tag.className = 'conn-tag' + (isSource ? ' conn-tag-src' : '');
+  tag.textContent = text;
+  workspace.appendChild(tag);
+  const e = terminalEdge(pinEl);
+  const dx = isSource ? 16 : -16;
+  tag.style.left = (e.x + dx) + 'px';
+  tag.style.top  = (e.y - 16) + 'px';
+  tag.addEventListener('click', (ev)=>{ ev.stopPropagation(); selectTag(tag); });
+  tag.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); selectTag(tag); }, {passive:true});
+  return tag;
+}
+function selectTag(tag){
+  if(selectedTag===tag) return;
+  selectedTag?.classList.remove('selected');
+  selectedTag = tag;
+  tag.classList.add('selected');
+  // al seleccionar tag, limpiamos cualquier conexión seleccionada
+  if(selectedConn){ selectedConn.path?.classList.remove('selected'); selectedConn.selected=false; selectedConn=null; }
+}
+function convertWireToLabel(conn){
+  conn.path && conn.path.remove(); conn.path=null;
+  conn.hit && conn.hit.remove(); conn.hit=null;
+  (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
+
+  const inputSideText  = getSourceName(conn);
+  const outputSideText = getDestNameWithPin(conn);
+
+  conn.tagDst = placeTagAtPin(conn.to,   inputSideText,  false);
+  conn.tagSrc = placeTagAtPin(conn.from, outputSideText, true);
+
+  conn.mode = 'label';
+}
+
+/* Crear conexión */
+function createConnection(fromTerm,toTerm){
+  if(simulation) return;
+  if(connections.find(c => c.from===fromTerm && c.to===toTerm)) return;
+  const conn={ from:fromTerm, to:toTerm, path:null, hit:null, bends:[], handles:[], selected:false, mode:'wire' };
+  connections.push(conn); renderConnection(conn);
+}
+
+/* Ordenar bends */
+function orderBends(conn){
+  const s=terminalEdge(conn.from), e=terminalEdge(conn.to);
+  const asc=s.x<=e.x; conn.bends.sort((a,b)=>asc?a.x-b.x:b.x-a.x);
+}
+
+/* Bend dragging */
 function startDraggingHandle(conn,index){
   if(conn.handles && conn.handles[index]) conn.handles[index].classList.add('dragging');
   draggingBend={conn,index};
@@ -632,72 +616,8 @@ function onBendMoveTouch(ev){
   scheduleBendRender(conn);
 }
 
-/* ====== Generación de etiquetas al convertir cable ====== */
-/* Texto del ORIGEN (para la etiqueta en el pin de ENTRADA) */
-function getSourceName(conn){
-  const srcNode = nodes.find(n=>n.output===conn.from);
-  if(!srcNode) return '??';
-  if(srcNode.type==='input' || srcNode.type==='output' || srcNode.type==='M') return srcNode.name; // I1 / Q1 / M1
-  return srcNode.code || 'B???'; // B001...
-}
-/* Texto del DESTINO (para la etiqueta en el pin de SALIDA) */
-function getDestNameWithPin(conn){
-  const dstNode = nodes.find(n=>n.inputs.includes(conn.to));
-  if(!dstNode) return '??';
-  const pinIndex = 1 + dstNode.inputs.indexOf(conn.to);
-  if(dstNode.type==='input' || dstNode.type==='output' || dstNode.type==='M') return `${dstNode.name}/${pinIndex}`; // Q1/1, I1/1, M1/1
-  return `${dstNode.code || 'B???'}/${pinIndex}`; // B001/1
-}
-
-/* Posicionar tag al lado del pin */
-function placeTagAtPin(pinEl, text, isSource){
-  const tag = document.createElement('div');
-  tag.className = 'conn-tag' + (isSource ? ' conn-tag-src' : '');
-  tag.textContent = text;
-  workspace.appendChild(tag);
-  // Posición
-  const e = terminalEdge(pinEl);
-  const dx = isSource ? 16 : -16;
-  tag.style.left = (e.x + dx) + 'px';
-  tag.style.top  = (e.y - 16) + 'px';
-  // Selección básica
-  tag.addEventListener('click', (ev)=>{ ev.stopPropagation(); const c=findConnForTag(tag); if(c) selectConnection(c); });
-  tag.addEventListener('touchstart', (ev)=>{ ev.stopPropagation(); const c=findConnForTag(tag); if(c) selectConnection(c); }, {passive:true});
-  return tag;
-}
-function findConnForTag(tag){
-  return connections.find(c=> c.tagSrc===tag || c.tagDst===tag );
-}
-
-/* Convertir una conexión cableada a etiquetas (doble tap/click) */
-function convertWireToLabel(conn){
-  // Limpia paths/hit/handles
-  conn.path && conn.path.remove(); conn.path=null;
-  conn.hit && conn.hit.remove(); conn.hit=null;
-  (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-
-  // Genera textos según regla pedida
-  const inputSideText  = getSourceName(conn);        // en pin de ENTRADA: origen (B001, Q1, M1, I1)
-  const outputSideText = getDestNameWithPin(conn);   // en pin de SALIDA: destino/pin (B001/1, Q1/1, ...)
-
-  // Crea tags
-  conn.tagDst = placeTagAtPin(conn.to,   inputSideText,  false);
-  conn.tagSrc = placeTagAtPin(conn.from, outputSideText, true);
-
-  conn.mode = 'label';
-}
-
-/* Crear conexión */
-function createConnection(fromTerm,toTerm){
-  if(simulation) return;
-  if(connections.find(c=>c.from===fromTerm && c.to===toTerm)) return;
-  const conn={ from:fromTerm, to:toTerm, path:null, hit:null, bends:[], handles:[], selected:false, mode:'wire' };
-  connections.push(conn); renderConnection(conn);
-}
-
-/* Render de conexión */
+/* Render conexión */
 function renderConnection(conn){
-  // Si es etiqueta, sólo asegura que las tags estén en su sitio y sal
   if(conn.mode==='label'){
     conn.path && conn.path.remove();
     conn.hit && conn.hit.remove();
@@ -707,7 +627,6 @@ function renderConnection(conn){
     return;
   }
 
-  // Modo cable normal:
   conn.path?.remove(); conn.hit?.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
   conn.tagSrc && conn.tagSrc.remove(); conn.tagSrc=null;
@@ -735,29 +654,9 @@ function renderConnection(conn){
   const onSelect=(ev)=>{ ev.stopPropagation(); if(simulation) return; selectConnection(conn); };
   hit.addEventListener('click',onSelect);
   hit.addEventListener('touchstart',onSelect,{passive:true});
-  hit.addEventListener('contextmenu',(ev)=>{ ev.preventDefault(); if(simulation) return; removeConnection(conn); });
+  hit.addEventListener('contextmenu',(ev)=>{ ev.preventDefault(); if(simulation) return; showWireMenu(conn, ev.clientX, ev.clientY); });
 
-  /* Doble tap / doble click ⇒ convertir a etiqueta y eliminar cable */
-  function handleDoubleActivate(ev){
-    ev.preventDefault(); ev.stopPropagation();
-    if(!connections.includes(conn)) return;
-    convertWireToLabel(conn);
-    lastTapTarget=null; lastTapTime=0;
-  }
-  function tryDoubleTap(ev){
-    const now=Date.now();
-    if(lastTapTarget===hit && (now-lastTapTime)<=DBL_TAP_MS){
-      handleDoubleActivate(ev);
-      return true;
-    }else{
-      lastTapTarget=hit; lastTapTime=now;
-      return false;
-    }
-  }
-  hit.addEventListener('touchstart', (ev)=>{ if(tryDoubleTap(ev)) return; }, {passive:false});
-  hit.addEventListener('click', (ev)=>{ const now=Date.now(); if(lastTapTarget===hit && (now-lastTapTime)<=DBL_TAP_MS){ handleDoubleActivate(ev); } else { lastTapTarget=hit; lastTapTime=now; } });
-
-  // Long press para agregar bend
+  // Long press abre menú en móviles
   function onPathDown(ev){
     if(simulation) return;
     if(ev.type==='mousedown' && ev.button!==0) return;
@@ -770,13 +669,9 @@ function renderConnection(conn){
 
     longPressTimer=setTimeout(()=>{
       if(cancelled) return;
-      if(!connections.includes(conn)) return;
       const clientX=(ev.type==='mousedown')?ev.clientX:(ev.touches?.[0]?.clientX ?? ev.clientX);
       const clientY=(ev.type==='mousedown')?ev.clientY:(ev.touches?.[0]?.clientY ?? ev.clientY);
-      const pos=clientToWorkspace(clientX,clientY);
-      conn.bends.push({x:pos.x,y:pos.y}); orderBends(conn); selectConnection(conn); renderConnection(conn);
-      let idx=0, best=1e9; conn.bends.forEach((b,i)=>{ const dd=Math.hypot(b.x-pos.x,b.y-pos.y); if(dd<best){best=dd; idx=i;} });
-      startDraggingHandle(conn,idx);
+      showWireMenu(conn, clientX, clientY);
     },400);
   }
   path.addEventListener('mousedown',onPathDown);
@@ -788,23 +683,17 @@ function renderConnection(conn){
   wiresSVG.appendChild(path);
   conn.hit=hit; conn.path=path;
 
-  /* Handles + mega-hitbox */
+  // Handles (si está seleccionado)
   if(conn.selected && !simulation){
     conn.handles=[];
     conn.bends.forEach((b,idx)=>{
       const g=document.createElementNS("http://www.w3.org/2000/svg","g");
-
       const hitC=document.createElementNS("http://www.w3.org/2000/svg","circle");
-      hitC.setAttribute('cx',b.x); hitC.setAttribute('cy',b.y); hitC.setAttribute('r',24);
-      hitC.setAttribute('class','bend-hit');
-
+      hitC.setAttribute('cx',b.x); hitC.setAttribute('cy',b.y); hitC.setAttribute('r',24); hitC.setAttribute('class','bend-hit');
       const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
-      c.setAttribute('cx',b.x); c.setAttribute('cy',b.y); c.setAttribute('r',11);
-      c.setAttribute('class','bend-handle');
-
+      c.setAttribute('cx',b.x); c.setAttribute('cy',b.y); c.setAttribute('r',11); c.setAttribute('class','bend-handle');
       g.appendChild(hitC); g.appendChild(c); wiresSVG.appendChild(g);
       conn.handles.push(c);
-
       const start=(ev)=>{ if(simulation) return; ev.stopPropagation(); startDraggingHandle(conn, idx); };
       c.addEventListener('mousedown',start); c.addEventListener('touchstart',start,{passive:true});
       hitC.addEventListener('mousedown',start); hitC.addEventListener('touchstart',start,{passive:true});
@@ -813,10 +702,40 @@ function renderConnection(conn){
 
   updatePinsVisual(conn, srcVal);
 }
-function orderBends(conn){
-  const s=terminalEdge(conn.from), e=terminalEdge(conn.to);
-  const asc=s.x<=e.x; conn.bends.sort((a,b)=>asc?a.x-b.x:b.x-a.x);
+
+/* Menú contextual del cable */
+function showWireMenu(conn, clientX, clientY){
+  menuContext = { conn, clientX, clientY };
+  wireMenu.style.display='block';
+  // posiciona evitando salir de pantalla
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const menuW = 260, menuH = 90;
+  let x = clientX, y = clientY;
+  if(x + menuW > vw) x = vw - menuW - 8;
+  if(y + menuH > vh) y = vh - menuH - 8;
+  wireMenu.style.left = x + 'px';
+  wireMenu.style.top  = y + 'px';
 }
+function hideWireMenu(){ wireMenu.style.display='none'; }
+menuAddNode.addEventListener('click', ()=>{
+  const {conn, clientX, clientY} = menuContext;
+  hideWireMenu();
+  if(!conn) return;
+  const pos=clientToWorkspace(clientX, clientY);
+  conn.bends.push({x:pos.x,y:pos.y}); orderBends(conn); selectConnection(conn); renderConnection(conn);
+  // escoger el bend recién creado (más cercano al click) y empezar arrastre
+  let idx=0,best=1e9; conn.bends.forEach((b,i)=>{ const dd=Math.hypot(b.x-pos.x,b.y-pos.y); if(dd<best){best=dd; idx=i;} });
+  startDraggingHandle(conn, idx);
+});
+menuMakeLabel.addEventListener('click', ()=>{
+  const {conn} = menuContext;
+  hideWireMenu();
+  if(!conn) return;
+  convertWireToLabel(conn);
+});
+document.addEventListener('click', (e)=>{ if(e.target!==wireMenu && !wireMenu.contains(e.target)) hideWireMenu(); });
+
+/* Soporte pins y visual */
 function updatePinsVisual(conn, srcVal){
   try{ conn.from.classList.toggle('signal-on', srcVal===1); }catch(e){}
   const srcNode=nodes.find(n=>n.output===conn.from);
@@ -904,16 +823,29 @@ document.getElementById('stop').addEventListener('click', ()=>{
 });
 document.getElementById('deleteBtn').addEventListener('click', ()=>{
   if(simulation) return;
-  if(selectedNode) { removeNode(selectedNode); return; }
-  if(selectedConn) { removeConnection(selectedConn); updateConnections(); return; }
+  if(selectedNode){ removeNode(selectedNode); return; }
+  if(selectedConn){ removeConnection(selectedConn); updateConnections(); return; }
+  if(selectedTag){
+    // eliminar etiquetas (la conexión completa en modo etiqueta)
+    const conn = connections.find(c=> c.tagSrc===selectedTag || c.tagDst===selectedTag );
+    if(conn){ removeConnection(conn); updateConnections(); }
+    selectedTag=null;
+  }
 });
+
+/* Teclas */
 document.addEventListener('keydown', (e)=>{
   if(e.key==='Delete' || e.key==='Backspace'){
     if(simulation) return;
     if(selectedNode) removeNode(selectedNode);
-    else if(selectedConn) { removeConnection(selectedConn); updateConnections(); }
+    else if(selectedConn){ removeConnection(selectedConn); updateConnections(); }
+    else if(selectedTag){
+      const conn = connections.find(c=> c.tagSrc===selectedTag || c.tagDst===selectedTag );
+      if(conn){ removeConnection(conn); updateConnections(); }
+      selectedTag=null;
+    }
   }
-  if(e.key==='Escape'){ lastTapTarget=null; lastTapTime=0; }
+  if(e.key==='Escape'){ clearSelection(); }
 });
 
 /* Redibuja en resize */
@@ -921,7 +853,7 @@ window.addEventListener('resize', updateConnections);
 
 /* Init */
 updateConnections();
-console.log("SIMUPASIR: Doble-tap en cable => etiquetas (origen y destino).");
+console.log("SIMUPASIR: Menú en long-press de cable (nodo / etiqueta).");
 </script>
 </body>
 </html>
