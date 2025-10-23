@@ -25,7 +25,7 @@
     --pin-long:24px;          /* largo visible para pines rectangulares */
     --pin-hit-h:28px;         /* alto del hitbox real para toque */
     --pin-visible-h:7px;      /* alto visible del pin rectangular */
-    --round-pin:28px;         /* DIÁMETRO pin redondo (doble 14px -> 28px) */
+    --round-pin:28px;         /* diámetro pin redondo (doble tamaño) */
 
     --workspace-size:5000px;
   }
@@ -33,7 +33,7 @@
   html,body { height:100%; }
   body { margin:0; font-family: Inter, Arial, Helvetica, sans-serif; display:flex; height:100vh; overflow:hidden; background:#fff; }
 
-  /* Sidebar más angosta */
+  /* Sidebar angosta */
   #sidebar {
     width:150px;
     background:var(--sidebar);
@@ -52,7 +52,7 @@
     cursor:grab;
     user-select:none;
     font-weight:700;
-    font-size:20px;  /* nombres en biblioteca a 20px */
+    font-size:20px;  /* nombres en biblioteca 20px */
     line-height:1.05;
     box-shadow:0 2px 0 rgba(0,0,0,.06);
   }
@@ -71,10 +71,28 @@
   }
   .label{
     font-weight:900; margin-bottom:6px; pointer-events:none; color:#222;
-    font-size:35px;   /* nombres de bloque en 35px (estilo LOGO!) */
+    font-size:35px;   /* nombres de bloque estilo LOGO! Soft */
     line-height:1.05;
   }
   .selected{ box-shadow:0 10px 18px rgba(0,0,0,.12); border-color:#0058a3!important; transform:translateY(-2px); }
+
+  /* Badge / código del bloque (para todo excepto I/Q/M) */
+  .badge {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    border: 2px solid #003366;
+    background: #fff;
+    color: #003366;
+    font-weight: 900;
+    font-size: 12px;
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+    box-shadow: 0 2px 0 rgba(0,0,0,.06);
+  }
 
   /* Pines: hitbox grande (rectangular por defecto) */
   .terminal{
@@ -88,10 +106,10 @@
   .terminal.input  { width:var(--pin-long); left:calc(-1 * var(--pin-long)); }
   .terminal.output { width:var(--pin-long); right:calc(-1 * var(--pin-long)); top:50%; transform:translateY(-50%); }
 
-  /* === Salida circular negra para NOT, NAND y NOR (pegada al bloque) === */
+  /* Salida circular negra para NOT, NAND y NOR (pegada al bloque) */
   .terminal.output.out-round{
     width:var(--round-pin);
-    right:calc(-1 * var(--round-pin));   /* el borde del círculo toca el borde derecho del bloque */
+    right:calc(-1 * var(--round-pin));   /* el borde del círculo toca el bloque */
   }
   .terminal.output.out-round::before{
     width:var(--round-pin);
@@ -101,7 +119,7 @@
     left:auto; right:0;                  /* pegado al bloque */
   }
 
-  /* Feedback de selección de pines */
+  /* Feedback pines */
   .terminal.pin-selected::before { background:#0078d7 !important; box-shadow:0 0 0 3px rgba(0,120,215,.25); }
   .terminal.pin-target { outline:2px solid #0078d7; outline-offset:2px; }
   .terminal.signal-on::before { background:var(--neon) !important; }
@@ -195,7 +213,7 @@
   <button id="installBtn">Instalar SIMUPASIR</button>
 
 <script>
-/* ===== PWA básico ===== */
+/* ===== PWA básico (no modificamos manifest/SW aún) ===== */
 let deferredPrompt=null;
 const installBtn=document.getElementById('installBtn');
 window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; installBtn.style.display='block'; });
@@ -211,6 +229,7 @@ const components = document.querySelectorAll(".component");
 let nodes=[], connections=[], pendingOutput=null, pendingGhost=null;
 let simulation=false;
 let inputCount=0, outputCount=0, memoryCount=0;
+let blockCodeCount=0;  // B001, B002, ...
 let scale=1, panX=0, panY=0, isPanning=false, panStartX=0, panStartY=0;
 let simTimer=null, SCAN_MS=60;
 let selectedNode=null, selectedConn=null;
@@ -222,14 +241,17 @@ let selectedPinEl=null;
 /* RAF para suavizar arrastre de bend */
 let bendRaf=null, bendRafConn=null;
 
-/* Etiquetas estilo LOGO! Soft */
+/* Utilidades */
+function zpad(n,len=3){ return String(n).padStart(len,'0'); }
+
+/* Etiquetas estilo LOGO! Soft (texto grande del bloque) */
 function logoLabelForType(type){
   switch(type){
     case 'and':  return '&';
-    case 'nand': return '&';   /* igual a AND, la inversión es la burbuja */
+    case 'nand': return '&';   /* igual a AND, con burbuja en salida */
     case 'or':   return '≥1';
-    case 'nor':  return '≥1';  /* igual a OR, la inversión es la burbuja */
-    case 'not':  return '1';   /* como pediste: NOT = 1 */
+    case 'nor':  return '≥1';  /* igual a OR, con burbuja en salida */
+    case 'not':  return '1';   /* NOT = 1 */
     case 'xor':  return '=1';
     case 'xnor': return '≠1';
     case 'sr':   return 'S/R';
@@ -238,7 +260,7 @@ function logoLabelForType(type){
   }
 }
 
-/* Utils */
+/* Coords */
 function clientToWorkspace(clientX, clientY){
   const rect = canvas.getBoundingClientRect();
   return { x:(clientX-rect.left-panX)/scale, y:(clientY-rect.top-panY)/scale };
@@ -324,13 +346,14 @@ workspace.addEventListener('touchend', e=>{
 });
 
 /* DnD (PC) + tap para insertar (móvil/preview) */
+let currentToPlace=null;
 components.forEach(comp=>{
   comp.addEventListener("dragstart", e=>{
     e.dataTransfer.setData("application/x-simupasir", comp.dataset.type);
     e.dataTransfer.setData("text/plain", comp.dataset.type);
     e.dataTransfer.effectAllowed='copy';
   });
-  comp.addEventListener("click", ()=>{ currentToPlace = comp.dataset.type; });
+  comp.addEventListener("click", ()=>{ currentToPlace = comp.dataset.type; components.forEach(c=>c.classList.remove('selected')); comp.classList.add('selected'); });
 });
 canvas.addEventListener("dragover", e=>{ e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
 canvas.addEventListener("drop", e=>{
@@ -376,18 +399,24 @@ function clearSelection(){
 function createNode(type,x,y){
   const div=document.createElement('div'); div.className='node'; div.style.left=x+'px'; div.style.top=y+'px';
 
-  // Etiqueta estilo LOGO! Soft
+  // Etiqueta estilo LOGO! Soft (texto grande)
   let display = logoLabelForType(type);
   if(type==='input')  display = `I${++inputCount}`;
   else if(type==='output') display = `Q${++outputCount}`;
   else if(type==='M')      display = `M${++memoryCount}`;
 
+  /* Badge B001... (no aplicar a I/Q/M) */
+  let blockCode=null;
+  if(type!=='input' && type!=='output' && type!=='M'){
+    blockCode = 'B'+zpad(++blockCodeCount);
+    const badge=document.createElement('div'); badge.className='badge'; badge.textContent=blockCode; div.appendChild(badge);
+  }
+
   const lbl=document.createElement('div'); lbl.className='label'; lbl.textContent=display; div.appendChild(lbl);
   const qind=document.createElement('div'); qind.className='q-indicator off'; div.appendChild(qind);
 
   const output=document.createElement('div'); output.className='terminal output';
-  /* salida circular para NOT/NAND/NOR */
-  if(type==='not' || type==='nand' || type==='nor'){ output.classList.add('out-round'); }
+  if(type==='not' || type==='nand' || type==='nor'){ output.classList.add('out-round'); } /* salida circular negra */
   div.appendChild(output);
 
   const inputs=[];
@@ -412,7 +441,7 @@ function createNode(type,x,y){
 
   workspace.appendChild(div);
 
-  const node={ el:div, type, name:display, inputs, output, value:0, nextValue:0, qIndicator:qind, invalid:false };
+  const node={ el:div, type, name:display, code:blockCode, inputs, output, value:0, nextValue:0, qIndicator:qind, invalid:false };
   if(type==='sr') node.q=0;
   nodes.push(node);
 
@@ -634,16 +663,12 @@ function updateConnections(){ connections.forEach(c=>renderConnection(c)); }
 function removeNode(node){
   if(simulation) return;
 
-  // Des-seleccionar si el pin seleccionado pertenece a este nodo
   if(selectedPinEl && (selectedPinEl===node.output || node.inputs.includes(selectedPinEl))){
     selectedPinEl.classList.remove('pin-selected'); selectedPinEl=null; pendingOutput=null; removeGhost();
   }
-
-  // Buscar conexiones afectadas y eliminarlas del DOM y del array
   const toRemove = connections.filter(c=> c.from===node.output || node.inputs.includes(c.to) );
   toRemove.forEach(removeConnection);
 
-  // Remover bloque
   node.el.remove();
   nodes = nodes.filter(n=>n!==node);
 
@@ -729,7 +754,7 @@ window.addEventListener('resize', updateConnections);
 
 /* Init */
 updateConnections();
-console.log("SIMUPASIR: borrado de cables al eliminar bloque + bends con RAF + símbolos LOGO! (NOT=1).");
+console.log("SIMUPASIR: Paso 1 completado — códigos B001 en bloques (excepto I/Q/M).");
 </script>
 </body>
 </html>
