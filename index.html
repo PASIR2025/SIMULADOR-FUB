@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>SIMUPASIR — etiquetas con troncal y junta</title>
+<title>LOGICSOFT — UI con menú superior</title>
 
 <link rel="manifest" href="./manifest.json">
 <meta name="theme-color" content="#003366">
@@ -21,97 +21,127 @@
     --neon:#00ff66;
     --accent:#444;
 
-    --pin-long:24px;          /* largo visible recto */
-    --pin-hit-h:28px;         /* alto hitbox toque */
-    --pin-visible-h:7px;      /* alto visible */
-    --round-pin:28px;         /* salida circular negra (doble) */
+    --pin-long:24px;
+    --pin-hit-h:28px;
+    --pin-visible-h:7px;
+    --round-pin:28px;
 
     --workspace-size:5000px;
+    --topbar-h:52px;
   }
 
   html,body{height:100%}
   body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;display:flex;height:100vh;overflow:hidden;background:#fff}
 
-  /* Sidebar angosto */
-  #sidebar{width:150px;background:var(--sidebar);padding:10px;border-right:3px solid #bdb089;display:flex;flex-direction:column;gap:8px;box-sizing:border-box;z-index:60}
-  #sidebar > div[style*="font-weight"]{font-size:13px}
-  .component{background:var(--node);border:2px solid #7a7a7a;border-radius:8px;padding:6px;text-align:center;cursor:grab;user-select:none;font-weight:700;font-size:20px;line-height:1.05;box-shadow:0 2px 0 rgba(0,0,0,.06)}
-  .component.selected{outline:3px solid #0078d7;outline-offset:2px}
+  /* ----------------- TOPBAR ----------------- */
+  #topbar{
+    position:fixed; left:0; right:0; top:0; height:var(--topbar-h);
+    background:#003366; color:#fff; display:flex; align-items:center;
+    gap:8px; padding:0 10px; z-index:300; box-shadow:0 2px 10px rgba(0,0,0,.2)
+  }
+  #topbar .title{font-weight:800; letter-spacing:.5px; margin-right:8px}
+  .btn, label.btn{
+    border:0; background:#fff; color:#003366; padding:6px 10px; border-radius:10px;
+    font-weight:900; cursor:pointer; white-space:nowrap
+  }
+  .btn.icon{padding:6px 8px}
+  #fileInput{display:none}
 
-  /* Canvas */
-  #canvas{flex:1;background:#fff;position:relative;overflow:hidden;touch-action:none}
-  #workspace{position:absolute;top:0;left:0;width:var(--workspace-size);height:var(--workspace-size);transform-origin:0 0;background:transparent}
+  /* Grupo de acciones compactas a la derecha del botón Biblioteca */
+  #actionGroup{display:flex; gap:6px; align-items:center}
+  #btnSim.sim-on{background:#00a36c; color:#fff}
 
-  /* Bloques */
-  .node{position:absolute;background:var(--node);border:3px solid var(--accent);border-radius:10px;width:150px;height:225px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:move;user-select:none;padding:8px;box-sizing:border-box;box-shadow:0 6px 0 rgba(0,0,0,.06);z-index:10;touch-action:none}
-  .label{font-weight:900;margin-bottom:6px;pointer-events:none;color:#222;font-size:60px;line-height:1.05}
-  .selected{box-shadow:0 10px 18px rgba(0,0,0,.12);border-color:#0058a3!important;transform:translateY(-2px)}
+  /* ----------------- SIDEBAR (BIBLIOTECA) ----------------- */
+  /* Como panel flotante que aparece debajo del topbar. Oculto por defecto. */
+  #sidebar{
+    position:fixed; top:var(--topbar-h); left:0; bottom:0; width:180px;
+    background:var(--sidebar); padding:10px; border-right:3px solid #bdb089;
+    display:none; flex-direction:column; gap:8px; box-sizing:border-box; z-index:260;
+    overflow:auto;
+  }
+  body.show-lib #sidebar{display:flex}
+  .component{
+    background:var(--node); border:2px solid #7a7a7a; border-radius:8px; padding:6px;
+    text-align:center; cursor:grab; user-select:none; font-weight:700; font-size:20px;
+    line-height:1.05; box-shadow:0 2px 0 rgba(0,0,0,.06)
+  }
+  .component.selected{outline:3px solid #0078d7; outline-offset:2px}
 
-  /* Badge B001… (grande) */
-  .badge{position:absolute;top:6px;left:6px;padding:4px 10px;border-radius:12px;border:2px solid #003366;background:#fff;color:#003366;font-weight:900;font-size:18px;line-height:1;pointer-events:none;user-select:none;box-shadow:0 2px 0 rgba(0,0,0,.06)}
+  /* ----------------- CANVAS ----------------- */
+  #canvas{flex:1; background:#fff; position:relative; overflow:hidden; touch-action:none; margin-top:var(--topbar-h)}
+  #workspace{position:absolute; top:0; left:0; width:var(--workspace-size); height:var(--workspace-size); transform-origin:0 0; background:transparent}
 
-  /* Pines con hitbox grande */
-  .terminal{position:absolute;cursor:pointer;border-radius:8px;box-shadow:0 1px 0 rgba(0,0,0,.08);height:var(--pin-hit-h);background:transparent}
-  .terminal::before{content:"";position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:var(--pin-visible-h);border-radius:4px;background:var(--pin);display:block}
-  .terminal.input{width:var(--pin-long);left:calc(-1 * var(--pin-long))}
-  .terminal.output{width:var(--pin-long);right:calc(-1 * var(--pin-long));top:50%;transform:translateY(-50%)}
+  /* ----------------- BLOQUES ----------------- */
+  .node{position:absolute; background:var(--node); border:3px solid var(--accent); border-radius:10px; width:150px; height:225px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:move; user-select:none; padding:8px; box-sizing:border-box; box-shadow:0 6px 0 rgba(0,0,0,.06); z-index:10; touch-action:none}
+  .label{font-weight:900; margin-bottom:6px; pointer-events:none; color:#222; font-size:60px; line-height:1.05}
+  .selected{box-shadow:0 10px 18px rgba(0,0,0,.12); border-color:#0058a3!important; transform:translateY(-2px)}
+  .node.has-signal{border-color:var(--neon)!important; box-shadow:0 0 0 2px rgba(0,255,102,.25), 0 6px 0 rgba(0,0,0,.06)}
 
-  /* Salida circular negra (NOT/NAND/NOR) */
-  .terminal.output.out-round{width:var(--round-pin);right:calc(-1 * var(--round-pin))}
-  .terminal.output.out-round::before{width:var(--round-pin);height:var(--round-pin);border-radius:50%;background:#000;left:auto;right:0}
+  .badge{position:absolute; top:6px; left:6px; padding:4px 10px; border-radius:12px; border:2px solid #003366; background:#fff; color:#003366; font-weight:900; font-size:18px; line-height:1; pointer-events:none; user-select:none; box-shadow:0 2px 0 rgba(0,0,0,.06)}
 
-  .terminal.pin-selected::before{background:#0078d7!important;box-shadow:0 0 0 3px rgba(0,120,215,.25)}
-  .terminal.pin-target{outline:2px solid #0078d7;outline-offset:2px}
+  /* ----------------- PINES ----------------- */
+  .terminal{position:absolute; cursor:pointer; border-radius:8px; box-shadow:0 1px 0 rgba(0,0,0,.08); height:var(--pin-hit-h); background:transparent}
+  .terminal::before{content:""; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); height:var(--pin-visible-h); border-radius:4px; background:var(--pin); display:block}
+  .terminal.input{width:var(--pin-long); left:calc(-1 * var(--pin-long))}
+  .terminal.output{width:var(--pin-long); right:calc(-1 * var(--pin-long)); top:50%; transform:translateY(-50%)}
+  .terminal.output.out-round{width:var(--round-pin); right:calc(-1 * var(--round-pin))}
+  .terminal.output.out-round::before{width:var(--round-pin); height:var(--round-pin); border-radius:50%; background:#000; left:auto; right:0}
+  .terminal.pin-selected::before{background:#0078d7!important; box-shadow:0 0 0 3px rgba(0,120,215,.25)}
+  .terminal.pin-target{outline:2px solid #0078d7; outline-offset:2px}
   .terminal.signal-on::before{background:var(--neon)!important}
+  .term-label{position:absolute; left:calc(-1 * var(--pin-long) - 36px); width:40px; text-align:right; font-size:12px; color:#222; user-select:none}
 
-  .term-label{position:absolute;left:calc(-1 * var(--pin-long) - 36px);width:40px;text-align:right;font-size:12px;color:#222;user-select:none}
+  /* ----------------- CABLES ----------------- */
+  #wires{position:absolute; top:0; left:0; width:var(--workspace-size); height:var(--workspace-size); pointer-events:auto; z-index:6}
+  .wire-hit{fill:none; stroke:#000; stroke-width:40; stroke-opacity:0; vector-effect:non-scaling-stroke; pointer-events:stroke; stroke-linecap:round}
+  .wire-path{fill:none; stroke:var(--wire); stroke-width:5; vector-effect:non-scaling-stroke; pointer-events:stroke}
+  .wire-path.signal{stroke:var(--neon); stroke-width:6; filter:drop-shadow(0 0 8px rgba(0,255,102,.25))}
+  .wire-path.selected{stroke:#0078d7; stroke-width:6}
+  .wire-path.ghost{stroke-dasharray:6 6; opacity:.75}
 
-  /* Cables */
-  #wires{position:absolute;top:0;left:0;width:var(--workspace-size);height:var(--workspace-size);pointer-events:auto;z-index:6}
-  .wire-hit{fill:none;stroke:#000;stroke-width:40;stroke-opacity:0;vector-effect:non-scaling-stroke;pointer-events:stroke;stroke-linecap:round}
-  .wire-path{fill:none;stroke:var(--wire);stroke-width:5;vector-effect:non-scaling-stroke;pointer-events:stroke}
-  .wire-path.signal{stroke:var(--neon);stroke-width:6;filter:drop-shadow(0 0 8px rgba(0,255,102,.25))}
-  .wire-path.selected{stroke:#0078d7;stroke-width:6}
-  .wire-path.ghost{stroke-dasharray:6 6;opacity:.75}
+  /* HUBS */
+  .hub-dot{fill:#000; stroke:#000; stroke-width:1.5; pointer-events:all; cursor:grab}
+  .hub-hit{fill:#000; fill-opacity:0; pointer-events:all; cursor:grab}
+  .hub-dot.signal{fill:var(--neon); stroke:var(--neon); filter:drop-shadow(0 0 8px rgba(0,255,102,.45))}
 
-  /* Junta (hub) negra en salidas */
-  .hub-dot{fill:#000;stroke:#000;stroke-width:1.5;pointer-events:all;cursor:grab}
-  .hub-hit{fill:#000;fill-opacity:0;pointer-events:all;cursor:grab}
-
-  /* Handles (nodos) */
-  .bend-handle{fill:#fff;stroke:#0078d7;stroke-width:2.5px;r:11;cursor:grab;pointer-events:all}
+  /* HANDLES */
+  .bend-handle{fill:#fff; stroke:#0078d7; stroke-width:2.5px; r:11; cursor:grab; pointer-events:all}
   .bend-handle.dragging{fill:#e6f3ff}
-  .bend-hit{fill:#000;fill-opacity:0;r:24;pointer-events:all}
+  .bend-hit{fill:#000; fill-opacity:0; r:24; pointer-events:all}
 
-  /* Etiquetas grandes */
-  .conn-tag{position:absolute;transform:translate(-50%,-50%);background:#fff;border:3px solid #003366;color:#003366;border-radius:12px;padding:6px 12px;font-weight:900;
-            font-size:27px;line-height:1;box-shadow:0 2px 0 rgba(0,0,0,.06);user-select:none;z-index:20;cursor:grab}
-  .conn-tag-src{background:#003366;color:#fff}
-  .conn-tag.selected{outline:3px solid #0078d7;outline-offset:2px}
+  /* ETIQUETAS */
+  .conn-tag{position:absolute; transform:translate(-50%,-50%); background:#fff; border:3px solid #003366; color:#003366; border-radius:12px; padding:6px 12px; font-weight:900; font-size:27px; line-height:1; box-shadow:0 2px 0 rgba(0,0,0,.06); user-select:none; z-index:20; cursor:grab}
+  .conn-tag-src{background:#003366; color:#fff}
+  .conn-tag.selected{outline:3px solid #0078d7; outline-offset:2px}
+  .conn-tag.signal{background:var(--neon); color:#000; border-color:var(--neon); box-shadow:0 0 12px rgba(0,255,102,.45)}
 
-  /* Controles */
-  #controls{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:var(--sidebar);padding:8px 12px;border-radius:10px;border:2px solid #bdb089;display:flex;gap:10px;align-items:center;z-index:200}
-  #controls button{padding:8px 10px;border-radius:8px;border:1px solid #777;background:#fff;font-weight:700;cursor:pointer}
+  /* CONTROLES ABAJO (solo zoom) */
+  #controls{
+    position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
+    background:var(--sidebar); padding:8px 12px; border-radius:10px;
+    border:2px solid #bdb089; display:flex; gap:10px; align-items:center; z-index:200
+  }
+  #controls button{padding:8px 10px; border-radius:8px; border:1px solid #777; background:#fff; font-weight:700; cursor:pointer}
   #zoomIn,#zoomOut{padding:6px 10px}
 
-  .q-indicator{width:18px;height:18px;border-radius:50%;background:#444;margin-top:8px;pointer-events:none;border:2px solid #222}
-  .q-indicator.on{background:var(--neon);box-shadow:0 0 8px rgba(0,255,102,.45)}
+  .q-indicator{width:18px; height:18px; border-radius:50%; background:#444; margin-top:8px; pointer-events:none; border:2px solid #222}
+  .q-indicator.on{background:var(--neon); box-shadow:0 0 8px rgba(0,255,102,.45)}
 
-  .hint{position:absolute;right:12px;top:12px;background:rgba(0,0,0,.05);padding:10px;border-radius:8px;font-size:13px;color:#222;width:320px;z-index:5;pointer-events:none}
-  #brand{position:fixed;right:12px;bottom:12px;background:rgba(0,0,0,.06);padding:8px 12px;border-radius:8px;font-weight:900;letter-spacing:1px;z-index:60;box-shadow:0 6px 0 rgba(0,0,0,.04)}
+  /* Marca */
+  #brand{position:fixed; right:12px; bottom:12px; background:rgba(0,0,0,.06); padding:8px 12px; border-radius:8px; font-weight:900; letter-spacing:1px; z-index:60; box-shadow:0 6px 0 rgba(0,0,0,.04)}
 
-  #installBtn{display:none;position:fixed;right:12px;bottom:80px;z-index:210;background:#003366;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:900;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.12)}
+  #installBtn{display:none; position:fixed; right:12px; bottom:80px; z-index:210; background:#003366; color:#fff; border:none; padding:10px 14px; border-radius:10px; font-weight:900; cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,.12)}
 
-  /* FAB y paleta en móvil */
-  #fabPalette{position:fixed;left:12px;bottom:12px;z-index:210;background:#003366;color:#fff;border:none;padding:12px 14px;border-radius:999px;font-weight:900;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.12);display:none}
-  #paletteModal{position:fixed;inset:0;display:none;z-index:220;background:rgba(0,0,0,.35)}
-  #paletteSheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:14px;border-top:3px solid #003366}
-  #paletteGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-  .pick{background:#fff8dc;border:2px solid #7a7a7a;border-radius:10px;padding:10px;font-weight:800;font-size:20px;text-align:center;cursor:pointer}
+  /* Paleta móvil (opcional) */
+  #fabPalette{position:fixed; left:12px; bottom:12px; z-index:210; background:#003366; color:#fff; border:none; padding:12px 14px; border-radius:999px; font-weight:900; cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,.12); display:none}
+  #paletteModal{position:fixed; inset:0; display:none; z-index:220; background:rgba(0,0,0,.35)}
+  #paletteSheet{position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:16px 16px 0 0; padding:14px; border-top:3px solid #003366}
+  #paletteGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
+  .pick{background:#fff8dc; border:2px solid #7a7a7a; border-radius:10px; padding:10px; font-weight:800; font-size:20px; text-align:center; cursor:pointer}
 
   /* Menú contextual del cable */
-  #wireMenu{position:fixed;z-index:230;display:none;background:#fff;border:2px solid #00366; border-color:#003366;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.18);overflow:hidden}
-  #wireMenu button{display:block;width:100%;background:#fff;border:0;border-bottom:1px solid #e5e5e5;padding:10px 14px;font-weight:800;cursor:pointer;text-align:left}
+  #wireMenu{position:fixed; z-index:230; display:none; background:#fff; border:2px solid #003366; border-radius:12px; box-shadow:0 10px 24px rgba(0,0,0,.18); overflow:hidden}
+  #wireMenu button{display:block; width:100%; background:#fff; border:0; border-bottom:1px solid #e5e5e5; padding:10px 14px; font-weight:800; cursor:pointer; text-align:left}
   #wireMenu button:last-child{border-bottom:0}
   #wireMenu button:hover{background:#f5f9ff}
 
@@ -121,15 +151,29 @@
     #fabPalette{bottom:calc(12px + env(safe-area-inset-bottom))}
   }
   @media (max-width:720px){
-    #sidebar{display:none}
     #fabPalette{display:block}
   }
 </style>
 </head>
-<body>
+<body class="">
 
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <button id="btnLib" class="btn icon" title="Biblioteca 🧩">🧩</button>
+    <div class="title">LOGICSOFT</div>
+
+    <div id="actionGroup">
+      <button id="btnSim" class="btn">Simular</button>
+      <button id="btnStop" class="btn">Detener</button>
+      <button id="btnDelete" class="btn">Eliminar</button>
+      <button id="btnSave" class="btn">Guardar</button>
+      <label for="fileInput" class="btn">Importar</label>
+      <input id="fileInput" type="file" accept=".json,.LOGICSOFT.json" />
+    </div>
+  </div>
+
+  <!-- SIDEBAR (BIBLIOTECA) - OCULTA POR DEFECTO -->
   <div id="sidebar">
-    <div style="font-weight:900">SIMUPASIR — Componentes</div>
     <div class="component" draggable="true" data-type="input">Entrada (I)</div>
     <div class="component" draggable="true" data-type="output">Salida (Q)</div>
     <div class="component" draggable="true" data-type="M">Memoria (M)</div>
@@ -144,33 +188,23 @@
     <div style="height:4px"></div>
     <div class="component" draggable="true" data-type="sr">SR (Set/Reset)</div>
     <div style="flex:1"></div>
-    <div style="font-size:11px;color:#333">Arrastra (PC) o usa el botón 🧩 para colocar. Conecta: salida → entrada.</div>
   </div>
 
+  <!-- CANVAS -->
   <div id="canvas">
     <div id="workspace">
       <svg id="wires" xmlns="http://www.w3.org/2000/svg" width="5000" height="5000" viewBox="0 0 5000 5000" preserveAspectRatio="none"></svg>
     </div>
 
+    <!-- Controles inferiores: solo zoom -->
     <div id="controls">
-      <button id="simulate">Simular</button>
-      <button id="stop">Detener</button>
-      <button id="deleteBtn">Eliminar</button>
       <button id="zoomOut" title="Alejar">−</button>
       <button id="zoomIn" title="Acercar">＋</button>
-      <div style="font-size:12px;color:#333;">(I: toca para alternar en simulación)</div>
-    </div>
-
-    <div class="hint">
-      - Pan con un dedo. Pellizca para zoom. <br>
-      - Toca salida (pin azul) → entrada. <br>
-      - Mantén presionado un cable o rama para agregar nodos. <br>
-      - Toca el fondo para des-seleccionar.
     </div>
   </div>
 
-  <div id="brand">SIMUPASIR</div>
-  <button id="installBtn">Instalar SIMUPASIR</button>
+  <div id="brand">LOGICSOFT</div>
+  <button id="installBtn">Instalar LOGICSOFT</button>
   <button id="fabPalette">🧩 Bloques</button>
 
   <!-- Modal paleta -->
@@ -184,7 +218,7 @@
     </div>
   </div>
 
-  <!-- Menú contextual del cable (modo wire) -->
+  <!-- Menú contextual del cable -->
   <div id="wireMenu">
     <button id="menuAddNode">➕ Crear nodo para acomodar</button>
     <button id="menuMakeLabel">🏷️ Crear etiqueta y eliminar cable</button>
@@ -198,7 +232,8 @@ window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferre
 installBtn.addEventListener('click', async()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; installBtn.style.display='none'; deferredPrompt=null; });
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('./service-worker.js').catch(console.error); }); }
 
-/* ===== SIMUPASIR ===== */
+/* ===== LOGICSOFT ===== */
+const body = document.body;
 const canvas = document.getElementById("canvas");
 const workspace = document.getElementById("workspace");
 const wiresSVG = document.getElementById("wires");
@@ -221,6 +256,19 @@ let selectedPinEl=null;
 /* Hubs (juntas) por pin de salida */
 const outputHubs = new WeakMap(); // pinEl -> { x,y, dot, hit, stemPath, branches:Set }
 
+/* ======== TOPBAR acciones ======== */
+const btnLib  = document.getElementById('btnLib');
+const btnSim  = document.getElementById('btnSim');
+const btnStop = document.getElementById('btnStop');
+const btnDel  = document.getElementById('btnDelete');
+const btnSave = document.getElementById('btnSave');
+const inpFile = document.getElementById('fileInput');
+
+/* Biblioteca: mostrar/ocultar (oculta por defecto) */
+body.classList.remove('show-lib'); // por defecto oculto
+btnLib.addEventListener('click', ()=>{ body.classList.toggle('show-lib'); });
+
+/* ===== Helpers ===== */
 function zpad(n,len=3){ return String(n).padStart(len,'0'); }
 function logoLabelForType(type){
   switch(type){
@@ -320,7 +368,7 @@ workspace.addEventListener('touchend', e=>{
 /* DnD (PC) + sidebar click (PC) */
 components.forEach(comp=>{
   comp.addEventListener("dragstart", e=>{
-    e.dataTransfer.setData("application/x-simupasir", comp.dataset.type);
+    e.dataTransfer.setData("application/x-LOGICSOFT", comp.dataset.type);
     e.dataTransfer.setData("text/plain", comp.dataset.type);
     e.dataTransfer.effectAllowed='copy';
   });
@@ -329,7 +377,7 @@ components.forEach(comp=>{
 canvas.addEventListener("dragover", e=>{ e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
 canvas.addEventListener("drop", e=>{
   e.preventDefault(); if(simulation) return;
-  const type=e.dataTransfer.getData("application/x-simupasir")||e.dataTransfer.getData("text/plain");
+  const type=e.dataTransfer.getData("application/x-LOGICSOFT")||e.dataTransfer.getData("text/plain");
   if(!type) return; const pos=clientToWorkspace(e.clientX,e.clientY); createNode(type,pos.x,pos.y);
 });
 
@@ -520,7 +568,6 @@ function ensureHub(pinEl){
   if(hub) return hub;
 
   const p = terminalEdge(pinEl);
-  // posición inicial de la junta un poco a la derecha del pin
   const x = p.x + 18, y = p.y;
   const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
   dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', 6);
@@ -571,16 +618,13 @@ function ensureHub(pinEl){
   return hubObj;
 }
 function renderHub(hub){
-  // actualiza dot/hit
   hub.dot.setAttribute('cx', hub.x); hub.dot.setAttribute('cy', hub.y);
   hub.hit.setAttribute('cx', hub.x); hub.hit.setAttribute('cy', hub.y);
 
-  // trazo desde pin → hub
   const e = terminalEdge(hub.pin);
   const d = `M${e.x},${e.y} L${hub.x-10},${e.y} L${hub.x-10},${hub.y} L${hub.x},${hub.y}`;
   hub.stemPath.setAttribute('d', d);
 
-  // re-render de todas las ramas asociadas a este hub
   for (const br of hub.branches) renderBranch(br);
 }
 
@@ -640,10 +684,9 @@ function createBranch({fromHub, hub, fromPin, pinEl, text}){
 
   const tag = createTagEl(text, !!fromHub);
 
-  // posición inicial de la etiqueta
   let start;
   if(fromHub) start = {x:hub.x, y:hub.y};
-  else { const e=terminalEdge(pinEl); start = {x:e.x-40, y:e.y}; } // hacia la izquierda en entradas
+  else { const e=terminalEdge(pinEl); start = {x:e.x-40, y:e.y}; }
 
   const branch = {
     fromHub, hub, fromPin, pinEl,
@@ -653,7 +696,6 @@ function createBranch({fromHub, hub, fromPin, pinEl, text}){
     ty: start.y - 20
   };
 
-  // interacción: selección y long-press para agregar nodos
   const onLP = (ev)=>{
     ev.stopPropagation();
     let cancelled=false;
@@ -676,7 +718,6 @@ function createBranch({fromHub, hub, fromPin, pinEl, text}){
   attachDragToTag(branch);
   renderBranch(branch);
 
-  // selección de rama (para borrar vía botón)
   const onSel=(e)=>{ e.stopPropagation(); selectedBranch=branch; selectTag(tag); };
   hit.addEventListener('click', onSel);
   hit.addEventListener('touchstart', onSel, {passive:true});
@@ -701,28 +742,24 @@ function renderBranch(branch){
   branch.path.setAttribute('d', d);
   branch.hit.setAttribute('d', d);
 
-  // posicionar etiqueta
   branch.tagEl.style.left = ex + 'px';
   branch.tagEl.style.top  = ey + 'px';
 }
 
 /* Convertir un cable a etiquetas + hub/ramas en salida y cable en entrada */
 function convertWireToLabel(conn){
-  // limpiar paths/handles del cable
   conn.path && conn.path.remove(); conn.path=null;
   conn.hit && conn.hit.remove(); conn.hit=null;
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
 
-  const srcName = getDestNameWithPin(conn); // etiqueta textual en salida: destino/pin
-  const inName  = getSourceName(conn);      // etiqueta textual en entrada: origen
+  const srcName = getDestNameWithPin(conn); // etiqueta en salida: destino/pin
+  const inName  = getSourceName(conn);      // etiqueta en entrada: origen
 
-  // --- SALIDA: hub compartido + rama individual ---
   const hub = ensureHub(conn.from);
   const srcBranch = createBranch({fromHub:true, hub, text:srcName});
   hub.branches.add(srcBranch);
   conn.srcBranch = srcBranch;
 
-  // --- ENTRADA: cable propio desde pinentrada → etiqueta ---
   const dstBranch = createBranch({fromHub:false, pinEl:conn.to, text:inName});
   conn.dstBranch = dstBranch;
 
@@ -772,14 +809,52 @@ menuMakeLabel.addEventListener('click', ()=>{
 });
 document.addEventListener('click', (e)=>{ if(e.target!==wireMenu && !wireMenu.contains(e.target)) hideWireMenu(); });
 
+/* ===== Señales (pines/etiquetas/ramas/hub) ===== */
+function applySignalStyles(conn, val){
+  try{
+    conn.from.classList.toggle('signal-on', val===1);
+    conn.to.classList.toggle('signal-on',   val===1);
+  }catch(e){}
+
+  if(conn.mode==='label'){
+    if(conn.srcBranch){
+      conn.srcBranch.path.classList.toggle('signal', val===1);
+      conn.srcBranch.tagEl.classList.toggle('signal', val===1);
+    }
+    if(conn.dstBranch){
+      conn.dstBranch.path.classList.toggle('signal', val===1);
+      conn.dstBranch.tagEl.classList.toggle('signal', val===1);
+    }
+    const hub = outputHubs.get(conn.from);
+    if(hub){
+      hub.stemPath.classList.toggle('signal', val===1);
+      hub.dot.classList.toggle('signal', val===1);
+    }
+  }else{
+    if(conn.path) conn.path.classList.toggle('signal', val===1);
+  }
+
+  const srcNode=nodes.find(n=>n.output===conn.from);
+  if(srcNode){
+    srcNode.qIndicator && srcNode.qIndicator.classList.toggle('on', val===1);
+    srcNode.el.classList.toggle('has-signal', srcNode.value===1);
+  }
+  const dstNode=nodes.find(n=>n.inputs.includes(conn.to));
+  if(dstNode){
+    dstNode.el.classList.toggle('has-signal', dstNode.value===1);
+  }
+}
+
 /* Render conexión (wire o label) */
 function renderConnection(conn){
   if(conn.mode==='label'){
-    // Render branches + actualiza hub troncal
     if(conn.srcBranch) renderBranch(conn.srcBranch);
     if(conn.dstBranch) renderBranch(conn.dstBranch);
     const hub = outputHubs.get(conn.from);
     hub && renderHub(hub);
+
+    const val = getSourceNodeValue(conn);
+    applySignalStyles(conn, val);
     return;
   }
 
@@ -803,15 +878,13 @@ function renderConnection(conn){
   path.setAttribute("d",d); path.setAttribute("class","wire-path");
   if(conn.selected) path.classList.add('selected');
 
-  const srcVal=getSourceNodeValue(conn);
-  if(srcVal===1) path.classList.add('signal'); else path.classList.remove('signal');
+  const val=getSourceNodeValue(conn);
 
   const onSelect=(ev)=>{ ev.stopPropagation(); if(simulation) return; selectConnection(conn); };
   hit.addEventListener('click',onSelect);
   hit.addEventListener('touchstart',onSelect,{passive:true});
   hit.addEventListener('contextmenu',(ev)=>{ ev.preventDefault(); if(simulation) return; showWireMenu(conn, ev.clientX, ev.clientY); });
 
-  // Long press abre menú en móviles
   function onPathDown(ev){
     if(simulation) return;
     if(ev.type==='mousedown' && ev.button!==0) return;
@@ -836,7 +909,8 @@ function renderConnection(conn){
   wiresSVG.appendChild(path);
   conn.hit=hit; conn.path=path;
 
-  // Handles (si está seleccionado)
+  applySignalStyles(conn, val);
+
   if(conn.selected && !simulation){
     conn.handles=[];
     conn.bends.forEach((b,idx)=>{
@@ -852,8 +926,6 @@ function renderConnection(conn){
       hitC.addEventListener('mousedown',start); hitC.addEventListener('touchstart',start,{passive:true});
     });
   }
-
-  updatePinsVisual(conn, srcVal);
 }
 
 /* Bend dragging para cables normales */
@@ -890,12 +962,7 @@ function onBendMoveTouch(ev){
   renderConnection(conn);
 }
 
-/* Utilidades pins */
-function updatePinsVisual(conn, srcVal){
-  try{ conn.from.classList.toggle('signal-on', srcVal===1); }catch(e){}
-  const srcNode=nodes.find(n=>n.output===conn.from);
-  if(srcNode && srcNode.qIndicator){ srcNode.qIndicator.classList.toggle('on', srcVal===1); }
-}
+/* Utilidades */
 function getSourceNodeValue(conn){ const n=nodes.find(nn=>nn.output===conn.from); return n? n.value:0; }
 function updateConnections(){ connections.forEach(c=>renderConnection(c)); }
 
@@ -909,13 +976,10 @@ function removeNode(node){
   const toRemove = connections.filter(c=> c.from===node.output || node.inputs.includes(c.to) );
   toRemove.forEach(removeConnection);
 
-  // si el bloque tenía un pin de salida con hub, eliminarlo
   if(node.output){
     const hub = outputHubs.get(node.output);
     if(hub){
-      for(const br of hub.branches){ // quitar etiquetas visuales
-        br.tagEl.remove(); br.path.remove(); br.hit.remove();
-      }
+      for(const br of hub.branches){ br.tagEl.remove(); br.path.remove(); br.hit.remove(); }
       hub.stemPath.remove(); hub.dot.remove(); hub.hit.remove();
       outputHubs.delete(node.output);
     }
@@ -931,17 +995,14 @@ function removeNode(node){
 /* Eliminar conexión (wire o label) */
 function removeConnection(conn){
   if(!conn) return;
-  // modo wire
   conn.path && conn.path.remove(); conn.hit && conn.hit.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
 
-  // modo label: quitar ramas y, si procede, hub
   if(conn.srcBranch){
     const hub = conn.srcBranch.hub;
     if(hub){ hub.branches.delete(conn.srcBranch); }
     conn.srcBranch.tagEl.remove(); conn.srcBranch.path.remove(); conn.srcBranch.hit.remove();
     conn.srcBranch=null;
-    // si ese hub queda vacío, eliminarlo
     if(hub && hub.branches.size===0){
       hub.stemPath.remove(); hub.dot.remove(); hub.hit.remove();
       outputHubs.delete(hub.pin);
@@ -971,12 +1032,13 @@ function evaluateGate(type,inputs){
     default: return inputs[0]||0;
   }
 }
+
 function scanLogic(){
   nodes.forEach(n=>{ if(n.type==='input') n.value = n.el.classList.contains('active')?1:0; n.invalid=false; });
+
   nodes.forEach(node=>{
     node.nextValue=node.value; if(node.type==='input') return;
-    const inVals=connections.filter(c=>node.inputs.includes(c.to)).map(c=>{ // etiquetas cuentan como conexión
-      // si es label, el origen sigue siendo el pin de salida original → mantenemos
+    const inVals=connections.filter(c=>node.inputs.includes(c.to)).map(c=>{
       const s=nodes.find(n=>n.output===c.from); return s ? s.value : 0;
     });
     if(inVals.length===0){
@@ -992,40 +1054,53 @@ function scanLogic(){
       else node.nextValue=node.q||0;
     }else node.nextValue=evaluateGate(node.type,inVals)?1:0;
   });
+
   nodes.forEach(n=>{ n.value=n.nextValue; if(n.type==='sr') n.q=n.nextValue; });
+
   nodes.forEach(n=>{
+    n.el.classList.toggle('has-signal', n.value===1);
     if(n.type==='input' || n.type==='output' || n.type==='M'){
       n.el.classList.toggle('active', n.value===1);
       n.output && n.output.classList.toggle('signal-on', n.value===1);
-    }else n.el.classList.remove('active');
+    }
     n.qIndicator && n.qIndicator.classList.toggle('on', n.value===1);
-    n.el.classList.toggle('error', !!n.invalid);
   });
+
+  connections.forEach(c=>{
+    const v=getSourceNodeValue(c);
+    applySignalStyles(c, v);
+  });
+
   updateConnections();
 }
 
-/* Botones */
-document.getElementById('simulate').addEventListener('click', ()=>{
+/* ====== BOTONES TOP ====== */
+btnSim.addEventListener('click', ()=>{
   if(simulation) return;
+  btnSim.classList.add('sim-on');
   clearSelection(); simulation=true; scanLogic(); simTimer=setInterval(scanLogic,SCAN_MS);
 });
-document.getElementById('stop').addEventListener('click', ()=>{
+btnStop.addEventListener('click', ()=>{
   if(simTimer){ clearInterval(simTimer); simTimer=null; }
+  btnSim.classList.remove('sim-on');
   simulation=false;
   nodes.forEach(n=>{
     n.value=0;
+    n.el.classList.remove('has-signal','active');
     if(n.type==='input'||n.type==='output'||n.type==='M') n.el.classList.remove('active');
     n.qIndicator && n.qIndicator.classList.remove('on');
-    n.invalid=false; n.output && n.output.classList.remove('signal-on');
+    n.invalid=false;
+    n.output && n.output.classList.remove('signal-on');
+    n.inputs?.forEach(inp=>inp.classList.remove('signal-on'));
   });
+  connections.forEach(c=>applySignalStyles(c, 0));
   updateConnections();
 });
-document.getElementById('deleteBtn').addEventListener('click', ()=>{
+btnDel.addEventListener('click', ()=>{
   if(simulation) return;
   if(selectedNode){ removeNode(selectedNode); return; }
   if(selectedConn){ removeConnection(selectedConn); updateConnections(); return; }
   if(selectedTag && selectedBranch){
-    // borrar la rama (si la etiqueta pertenece a una rama)
     const conn = connections.find(c=> c.srcBranch===selectedBranch || c.dstBranch===selectedBranch );
     if(conn){
       if(conn.srcBranch===selectedBranch){
@@ -1041,7 +1116,6 @@ document.getElementById('deleteBtn').addEventListener('click', ()=>{
         selectedBranch.tagEl.remove(); selectedBranch.path.remove(); selectedBranch.hit.remove();
         conn.dstBranch=null;
       }
-      // si ambas ramas se fueron, elimina la conexión
       if(!conn.srcBranch && !conn.dstBranch){
         const i=connections.indexOf(conn); if(i>=0) connections.splice(i,1);
       }
@@ -1050,15 +1124,75 @@ document.getElementById('deleteBtn').addEventListener('click', ()=>{
     selectedBranch=null; selectedTag=null;
     return;
   }
-  if(selectedTag){
-    // buscar si el tag pertenece a algún branch
-    for(const conn of connections){
-      if(conn.srcBranch && conn.srcBranch.tagEl===selectedTag){ selectedBranch=conn.srcBranch; break; }
-      if(conn.dstBranch && conn.dstBranch.tagEl===selectedTag){ selectedBranch=conn.dstBranch; break; }
-    }
-    document.getElementById('deleteBtn').click(); // reutiliza lógica de arriba
-  }
 });
+
+/* ====== GUARDAR / IMPORTAR (simple) ====== */
+function serializeProject(){
+  // mapear ids
+  const nodeList = nodes.map((n,idx)=>({
+    id: idx,
+    type: n.type,
+    x: parseFloat(n.el.style.left)||0,
+    y: parseFloat(n.el.style.top)||0
+  }));
+  const connList = connections.map(c=>{
+    const srcIdx = nodes.findIndex(n=>n.output===c.from);
+    const dstIdx = nodes.findIndex(n=>n.inputs.includes(c.to));
+    const dstNode = nodes[dstIdx];
+    const inIndex = dstNode ? dstNode.inputs.indexOf(c.to) : 0;
+    return {from:srcIdx, to:dstIdx, toPin:inIndex};
+  });
+  return { version:1, nodes:nodeList, connections:connList, counts:{I:inputCount,Q:outputCount,M:memoryCount,B:blockCodeCount} };
+}
+function saveFile(obj, name="simupasir.json"){
+  const blob = new Blob([JSON.stringify(obj,null,2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+btnSave.addEventListener('click', ()=>{
+  const data = serializeProject();
+  saveFile(data, 'simupasir.json');
+});
+inpFile.addEventListener('change', async(e)=>{
+  const f=e.target.files?.[0]; if(!f) return;
+  const text = await f.text();
+  try{
+    const data = JSON.parse(text);
+    loadProject(data);
+  }catch(err){ alert("Archivo inválido"); }
+  e.target.value='';
+});
+
+function loadProject(data){
+  // limpiar
+  [...nodes].forEach(n=>removeNode(n));
+  nodes=[]; connections=[]; inputCount=0; outputCount=0; memoryCount=0; blockCodeCount=0;
+
+  // crear nodos
+  (data.nodes||[]).forEach(nd=>{
+    createNode(nd.type, nd.x||0, nd.y||0);
+  });
+
+  // recrear conexiones (como cables rectos)
+  (data.connections||[]).forEach(c=>{
+    const src = nodes[c.from]; const dst = nodes[c.to];
+    if(src && dst && dst.inputs[c.toPin]){
+      createConnection(src.output, dst.inputs[c.toPin]);
+    }
+  });
+
+  // restaurar contadores (opcional)
+  if(data.counts){
+    inputCount = data.counts.I||inputCount;
+    outputCount= data.counts.Q||outputCount;
+    memoryCount= data.counts.M||memoryCount;
+    blockCodeCount=data.counts.B||blockCodeCount;
+  }
+
+  updateConnections();
+}
 
 /* Click en tag para fijar selectedBranch */
 workspace.addEventListener('click', (e)=>{
@@ -1070,14 +1204,12 @@ workspace.addEventListener('click', (e)=>{
   }
 });
 
-/* Teclas */
+/* Teclas rápidas */
 document.getElementById('zoomIn').addEventListener('click', ()=>setZoom(scale+0.12));
 document.getElementById('zoomOut').addEventListener('click', ()=>setZoom(scale-0.12));
-
 document.addEventListener('keydown', (e)=>{
   if(e.key==='Delete' || e.key==='Backspace'){
-    if(simulation) return;
-    document.getElementById('deleteBtn').click();
+    if(simulation) return; btnDel.click();
   }
   if(e.key==='Escape'){ clearSelection(); }
 });
@@ -1087,7 +1219,7 @@ window.addEventListener('resize', updateConnections);
 
 /* Init */
 updateConnections();
-console.log("SIMUPASIR: Etiquetas con troncal compartido, junta negra y ramas ajustables.");
+console.log("SIMUPASIR: Menú superior con biblioteca oculta por defecto + acciones en topbar.");
 </script>
 </body>
 </html>
