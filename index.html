@@ -182,6 +182,18 @@
 #sidebar::-webkit-scrollbar-thumb{ background:#bbb; border-radius:6px; }
 </style>
 
+
+<style id="drag-ghost-style">
+.drag-ghost{
+  position:fixed; left:0; top:0;
+  transform:translate(-9999px,-9999px);
+  opacity:.9; pointer-events:none; z-index:99999;
+  padding:6px 10px; border-radius:10px;
+  background:#fff; border:2px solid #003366;
+  font-weight:900; box-shadow:0 8px 20px rgba(0,0,0,.22);
+}
+</style>
+
 </head>
 <body>
 
@@ -498,6 +510,58 @@ workspace.addEventListener('touchend', e=>{
 });
 
 /* DnD + selección paleta */
+
+/* === Touch Drag & Drop (móvil/tablet) desde #sidebar al #workspace === */
+(function(){
+  if (!window.components || !window.canvas || !window.workspace || typeof clientToWorkspace!=='function' || typeof createNode!=='function') return;
+  let ghostEl=null, draggingType=null;
+  const OFFSET_X=12, OFFSET_Y=12;
+
+  function mkGhost(label){
+    const g=document.createElement('div');
+    g.className='drag-ghost';
+    g.textContent=label.toUpperCase();
+    document.body.appendChild(g);
+    return g;
+  }
+  function mvGhost(x,y){
+    if(!ghostEl) return;
+    ghostEl.style.transform = `translate(${x+OFFSET_X}px,${y+OFFSET_Y}px)`;
+  }
+  function rmGhost(){ if(ghostEl){ ghostEl.remove(); ghostEl=null; } }
+
+  components.forEach(comp=>{
+    comp.addEventListener('touchstart', (e)=>{
+      if(e.touches.length!==1) return;
+      draggingType = comp.dataset.type;
+      ghostEl = mkGhost(comp.textContent.trim());
+      mvGhost(e.touches[0].clientX, e.touches[0].clientY);
+    }, {passive:true});
+
+    comp.addEventListener('touchmove', (e)=>{
+      if(!draggingType || !ghostEl) return;
+      const t=e.touches[0];
+      mvGhost(t.clientX, t.clientY);
+      e.preventDefault(); // evita scroll mientras arrastras
+    }, {passive:false});
+
+    comp.addEventListener('touchend', (e)=>{
+      if(!draggingType) return;
+      const t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+      if(t){
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        if(el && (el.id==='canvas' || el.id==='workspace' || el.closest?.('#canvas') || el.closest?.('#workspace'))){
+          const pos = clientToWorkspace(t.clientX, t.clientY);
+          createNode(draggingType, pos.x, pos.y);
+        }
+      }
+      draggingType=null; rmGhost();
+    }, {passive:true});
+  });
+
+  window.addEventListener('touchcancel', ()=>{ draggingType=null; rmGhost(); }, {passive:true});
+})();
+
 components.forEach(comp=>{
   comp.addEventListener("dragstart", e=>{
     e.dataTransfer.setData("application/x-simupasir", comp.dataset.type);
@@ -1249,6 +1313,8 @@ document.getElementById('simulate').addEventListener('click', ()=>{
 document.getElementById('stop').addEventListener('click', ()=>{
   if(simTimer){ clearInterval(simTimer); simTimer=null; }
   simulation=false;
+  document.getElementById('simulate')?.classList.remove('active');
+  document.getElementById('stop')?.classList.add('active');
   nodes.forEach(n=>{
     n.value=0;
     n.el.classList.remove('has-signal','active');
@@ -1259,7 +1325,7 @@ document.getElementById('stop').addEventListener('click', ()=>{
     n.inputs?.forEach(inp=>inp.classList.remove('signal-on'));
     if(n.type==='ton' || n.type==='toff'){ n.timerStart=null; n.prevIn=0; }
     if(n.type==='toff'){ n.seenHigh=false; }
-  });
+});
   connections.forEach(c=>applySignalStyles(c, 0));
   updateConnections();
 });
