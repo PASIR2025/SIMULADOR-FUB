@@ -3,7 +3,7 @@
 <html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SIMUPASIR — TON / TOFF</title>
+<title>LOGICSOFT — TON / TOFF</title>
 
 <link rel="manifest" href="https://pasir2025.github.io/SIMULADOR-LOGO/manifest.json">
 <meta name="theme-color" content="#003366">
@@ -43,10 +43,10 @@
 
   /* Sidebar (biblioteca) */
   #sidebar{
-    position:fixed; top:46px; bottom:0; left:0; width:180px; background:var(--sidebar); padding:10px;
+    position:fixed; top:46px; bottom:0; left:0; width:120px; background:var(--sidebar); padding:10px;
     border-right:3px solid #bdb089; display:flex; flex-direction:column; gap:8px; box-sizing:border-box; z-index:200;
     transform:translateX(-100%); transition:transform .18s ease;
-  }
+   overflow-y:auto;}
   #sidebar.open{transform:translateX(0)}
   #sidebar > div[style*="font-weight"]{font-size:13px}
   .component{background:var(--node);border:2px solid #7a7a7a;border-radius:8px;padding:6px;text-align:center;cursor:grab;user-select:none;font-weight:700;font-size:20px;line-height:1.05;box-shadow:0 2px 0 rgba(0,0,0,.06)}
@@ -148,6 +148,40 @@
   #delete-debug b{color:#93c5fd}
 </style>
 
+
+/* Simulate active visual */
+<style>
+  #simulate.active{
+    background:#16a34a !important;
+    color:#fff !important;
+    border-color:#0f7a36 !important;
+    box-shadow:0 0 0 2px rgba(22,163,74,.25) inset;
+  }
+</style>
+
+
+<style id="logicsoft-tablet-css">
+/* Momentum scroll on iOS/Android */
+#sidebar{ -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+/* Better stacking and tap target */
+#sidebar{ z-index: 300 !important; }
+#burger{ min-width:44px; min-height:44px; }
+/* Backdrop overlay for sidebar */
+#sidebarBackdrop{
+  position:fixed; inset:46px 0 0 0; background:rgba(0,0,0,.25);
+  z-index: 250; display:none;
+}
+#sidebar.open + #sidebarBackdrop{ display:block; }
+/* Mobile/Tablet fine-tuning */
+@media (max-width: 1024px){
+  #topbar{ gap:6px; }
+  .component{ font-size:18px; padding:6px; }
+}
+/* Optional thin scrollbar styling (keeps native) */
+#sidebar::-webkit-scrollbar{ width:8px; }
+#sidebar::-webkit-scrollbar-thumb{ background:#bbb; border-radius:6px; }
+</style>
+
 </head>
 <body>
 
@@ -167,7 +201,7 @@
 
   <!-- Biblioteca (oculta por defecto, se abre con ☰) -->
   <div id="sidebar">
-    <div style="font-weight:900">SIMUPASIR — Componentes</div>
+    <div style="font-weight:900">LOGICSOFT — Componentes</div>
     <div class="component" draggable="true" data-type="input">Entrada (I)</div>
     <div class="component" draggable="true" data-type="output">Salida (Q)</div>
     <div class="component" draggable="true" data-type="M">Memoria (M)</div>
@@ -187,6 +221,7 @@
     <div style="flex:1"></div>
     <div style="font-size:11px;color:#333">Arrastra un bloque al área.</div>
   </div>
+  <div id="sidebarBackdrop" aria-hidden="true"></div>
 
   <!-- Lienzo -->
   <div id="canvas">
@@ -195,8 +230,8 @@
     </div>
   </div>
 
-  <div id="brand">SIMUPASIR</div>
-  <button id="installBtn">Instalar SIMUPASIR</button>
+  <div id="brand">LOGICSOFT</div>
+  <button id="installBtn">Instalar LOGICSOFT</button>
   <button id="fabPalette">🧩 Bloques</button>
 
   <!-- Paleta móvil -->
@@ -240,7 +275,67 @@ if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator
 /* ===== SIMUPASIR ===== */
 const burger = document.getElementById('burger');
 const sidebar = document.getElementById('sidebar');
-burger.addEventListener('click', ()=>{ sidebar.classList.toggle('open'); });
+burger.addEventListener('click', ()=>{ sidebar.classList.toggle('open');
+
+// ===== Sidebar mobile/tablet UX =====
+const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+
+function openSidebar(){ sidebar.classList.add('open'); sidebarBackdrop.style.display='block'; }
+function closeSidebar(){ sidebar.classList.remove('open'); sidebarBackdrop.style.display='none'; }
+function toggleSidebar(){ sidebar.classList.toggle('open'); sidebarBackdrop.style.display = sidebar.classList.contains('open') ? 'block' : 'none'; }
+
+// Replace burger handler with toggleSidebar for consistent backdrop
+try{
+  burger.replaceWith(burger.cloneNode(true));
+  const newBurger = document.getElementById('burger');
+  newBurger.addEventListener('click', toggleSidebar);
+}catch(_e){
+  // fallback: attach to existing
+  burger && burger.addEventListener('click', toggleSidebar);
+}
+
+// Close on backdrop click
+sidebarBackdrop.addEventListener('click', closeSidebar);
+
+// Close with ESC
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
+});
+
+// Swipe gestures (open from left edge; close when open)
+let swipeState = { active:false, startX:0, startY:0, openedOnSwipe:false };
+
+window.addEventListener('touchstart', (e)=>{
+  const t = e.touches[0];
+  // If sidebar closed and touch starts very close to left edge, prepare to open
+  if(!sidebar.classList.contains('open') && t.clientX <= 20 && t.clientY >= 46){
+    swipeState = { active:true, startX:t.clientX, startY:t.clientY, openedOnSwipe:false };
+  }
+  // If sidebar open, allow swipe left to close (start anywhere over backdrop or sidebar)
+  else if(sidebar.classList.contains('open')){
+    swipeState = { active:true, startX:t.clientX, startY:t.clientY, openedOnSwipe:false };
+  } else {
+    swipeState.active=false;
+  }
+}, {passive:true});
+
+window.addEventListener('touchmove', (e)=>{
+  if(!swipeState.active) return;
+  const t=e.touches[0];
+  const dx = t.clientX - swipeState.startX;
+  // Opening gesture: pull right at least 30px
+  if(!sidebar.classList.contains('open') && dx > 30){
+    openSidebar();
+    swipeState.openedOnSwipe = true;
+  }
+  // Closing gesture: push left at least 30px
+  if(sidebar.classList.contains('open') && dx < -30){
+    closeSidebar();
+  }
+}, {passive:true});
+
+window.addEventListener('touchend', ()=>{ swipeState.active=false; }, {passive:true});
+ });
 
 const canvas = document.getElementById("canvas");
 const workspace = document.getElementById("workspace");
@@ -1140,6 +1235,8 @@ function scanLogic(){
 document.getElementById('simulate').addEventListener('click', ()=>{
   if(simulation) return;
   clearSelection(); simulation=true;
+  document.getElementById('simulate')?.classList.add('active');
+  document.getElementById('stop')?.classList.remove('active');
   nodes.forEach(n=>{
     if(n.type==='ton' || n.type==='toff'){
       n.timerStart = null;
