@@ -1,16 +1,16 @@
 <!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<title>LOGICSOFT — UI con menú superior</title>
+<!-- saved from url=(0043)https://pasir2025.github.io/SIMULADOR-LOGO/ -->
+<html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
-<link rel="manifest" href="./manifest.json">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SIMUPASIR — TON / TOFF</title>
+
+<link rel="manifest" href="https://pasir2025.github.io/SIMULADOR-LOGO/manifest.json">
 <meta name="theme-color" content="#003366">
-<link rel="icon" href="./icons/icon-192.png">
+<link rel="icon" href="https://pasir2025.github.io/SIMULADOR-LOGO/icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="https://pasir2025.github.io/SIMULADOR-LOGO/icons/icon-192.png">
 
 <style>
   :root{
@@ -27,126 +27,112 @@
     --round-pin:28px;
 
     --workspace-size:5000px;
-    --topbar-h:52px;
   }
 
   html,body{height:100%}
   body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;display:flex;height:100vh;overflow:hidden;background:#fff}
 
-  /* ----------------- TOPBAR ----------------- */
+  /* Topbar */
   #topbar{
-    position:fixed; left:0; right:0; top:0; height:var(--topbar-h);
-    background:#003366; color:#fff; display:flex; align-items:center;
-    gap:8px; padding:0 10px; z-index:300; box-shadow:0 2px 10px rgba(0,0,0,.2)
+    position:fixed; inset:0 0 auto 0; height:46px; background:#ffffffcc; backdrop-filter:saturate(1.2) blur(6px);
+    display:flex; align-items:center; gap:8px; padding:6px 8px; z-index:250; border-bottom:1px solid #e7e7e7;
   }
-  #topbar .title{font-weight:800; letter-spacing:.5px; margin-right:8px}
-  .btn, label.btn{
-    border:0; background:#fff; color:#003366; padding:6px 10px; border-radius:10px;
-    font-weight:900; cursor:pointer; white-space:nowrap
-  }
-  .btn.icon{padding:6px 8px}
-  #fileInput{display:none}
+  #burger{font-size:20px; font-weight:900; padding:6px 10px; border:1px solid #777; border-radius:8px; background:#fff; cursor:pointer}
+  #topbar button{padding:6px 10px;border-radius:8px;border:1px solid #777;background:#fff;font-weight:700;cursor:pointer}
+  #spacer{flex:1}
 
-  /* Grupo de acciones compactas a la derecha del botón Biblioteca */
-  #actionGroup{display:flex; gap:6px; align-items:center}
-  #btnSim.sim-on{background:#00a36c; color:#fff}
-
-  /* ----------------- SIDEBAR (BIBLIOTECA) ----------------- */
-  /* Como panel flotante que aparece debajo del topbar. Oculto por defecto. */
+  /* Sidebar (biblioteca) */
   #sidebar{
-    position:fixed; top:var(--topbar-h); left:0; bottom:0; width:180px;
-    background:var(--sidebar); padding:10px; border-right:3px solid #bdb089;
-    display:none; flex-direction:column; gap:8px; box-sizing:border-box; z-index:260;
-    overflow:auto;
+    position:fixed; top:46px; bottom:0; left:0; width:180px; background:var(--sidebar); padding:10px;
+    border-right:3px solid #bdb089; display:flex; flex-direction:column; gap:8px; box-sizing:border-box; z-index:200;
+    transform:translateX(-100%); transition:transform .18s ease;
   }
-  body.show-lib #sidebar{display:flex}
-  .component{
-    background:var(--node); border:2px solid #7a7a7a; border-radius:8px; padding:6px;
-    text-align:center; cursor:grab; user-select:none; font-weight:700; font-size:20px;
-    line-height:1.05; box-shadow:0 2px 0 rgba(0,0,0,.06)
-  }
-  .component.selected{outline:3px solid #0078d7; outline-offset:2px}
+  #sidebar.open{transform:translateX(0)}
+  #sidebar > div[style*="font-weight"]{font-size:13px}
+  .component{background:var(--node);border:2px solid #7a7a7a;border-radius:8px;padding:6px;text-align:center;cursor:grab;user-select:none;font-weight:700;font-size:20px;line-height:1.05;box-shadow:0 2px 0 rgba(0,0,0,.06)}
+  .component.selected{outline:3px solid #0078d7;outline-offset:2px}
 
-  /* ----------------- CANVAS ----------------- */
-  #canvas{flex:1; background:#fff; position:relative; overflow:hidden; touch-action:none; margin-top:var(--topbar-h)}
-  #workspace{position:absolute; top:0; left:0; width:var(--workspace-size); height:var(--workspace-size); transform-origin:0 0; background:transparent}
+  /* Canvas */
+  #canvas{flex:1;background:#fff;position:absolute; inset:46px 0 0 0; overflow:hidden; touch-action:none}
+  #workspace{position:absolute;top:0;left:0;width:var(--workspace-size);height:var(--workspace-size);transform-origin:0 0;background:transparent}
 
-  /* ----------------- BLOQUES ----------------- */
-  .node{position:absolute; background:var(--node); border:3px solid var(--accent); border-radius:10px; width:150px; height:225px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; cursor:move; user-select:none; padding:8px; box-sizing:border-box; box-shadow:0 6px 0 rgba(0,0,0,.06); z-index:10; touch-action:none}
-  .label{font-weight:900; margin-bottom:6px; pointer-events:none; color:#222; font-size:60px; line-height:1.05}
-  .selected{box-shadow:0 10px 18px rgba(0,0,0,.12); border-color:#0058a3!important; transform:translateY(-2px)}
+  /* Bloques */
+  .node{position:absolute;background:var(--node);border:3px solid var(--accent);border-radius:10px;width:150px;height:225px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:move;user-select:none;padding:8px;box-sizing:border-box;box-shadow:0 6px 0 rgba(0,0,0,.06);z-index:10;touch-action:none}
+  .label{font-weight:900;margin-bottom:6px;pointer-events:none;color:#222;font-size:60px;line-height:1.05}
+  .selected{box-shadow:0 10px 18px rgba(0,0,0,.12);border-color:#0058a3!important;transform:translateY(-2px)}
   .node.has-signal{border-color:var(--neon)!important; box-shadow:0 0 0 2px rgba(0,255,102,.25), 0 6px 0 rgba(0,0,0,.06)}
 
-  .badge{position:absolute; top:6px; left:6px; padding:4px 10px; border-radius:12px; border:2px solid #003366; background:#fff; color:#003366; font-weight:900; font-size:18px; line-height:1; pointer-events:none; user-select:none; box-shadow:0 2px 0 rgba(0,0,0,.06)}
+  /* Badge B001… */
+  .badge{position:absolute;top:6px;left:6px;padding:4px 10px;border-radius:12px;border:2px solid #003366;background:#fff;color:#003366;font-weight:900;font-size:18px;line-height:1;pointer-events:none;user-select:none;box-shadow:0 2px 0 rgba(0,0,0,.06)}
 
-  /* ----------------- PINES ----------------- */
-  .terminal{position:absolute; cursor:pointer; border-radius:8px; box-shadow:0 1px 0 rgba(0,0,0,.08); height:var(--pin-hit-h); background:transparent}
-  .terminal::before{content:""; position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); height:var(--pin-visible-h); border-radius:4px; background:var(--pin); display:block}
-  .terminal.input{width:var(--pin-long); left:calc(-1 * var(--pin-long))}
-  .terminal.output{width:var(--pin-long); right:calc(-1 * var(--pin-long)); top:50%; transform:translateY(-50%)}
-  .terminal.output.out-round{width:var(--round-pin); right:calc(-1 * var(--round-pin))}
-  .terminal.output.out-round::before{width:var(--round-pin); height:var(--round-pin); border-radius:50%; background:#000; left:auto; right:0}
-  .terminal.pin-selected::before{background:#0078d7!important; box-shadow:0 0 0 3px rgba(0,120,215,.25)}
-  .terminal.pin-target{outline:2px solid #0078d7; outline-offset:2px}
+  /* Pines */
+  .terminal{position:absolute;cursor:pointer;border-radius:8px;box-shadow:0 1px 0 rgba(0,0,0,.08);height:var(--pin-hit-h);background:transparent}
+  .terminal::before{content:"";position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:var(--pin-visible-h);border-radius:4px;background:var(--pin);display:block}
+  .terminal.input{width:var(--pin-long);left:calc(-1 * var(--pin-long))}
+  .terminal.output{width:var(--pin-long);right:calc(-1 * var(--pin-long));top:50%;transform:translateY(-50%)}
+  .terminal.output.out-round{width:var(--round-pin);right:calc(-1 * var(--round-pin))}
+  .terminal.output.out-round::before{width:var(--round-pin);height:var(--round-pin);border-radius:50%;background:#000;left:auto;right:0}
+  .terminal.pin-selected::before{background:#0078d7!important;box-shadow:0 0 0 3px rgba(0,120,215,.25)}
+  .terminal.pin-target{outline:2px solid #0078d7;outline-offset:2px}
   .terminal.signal-on::before{background:var(--neon)!important}
-  .term-label{position:absolute; left:calc(-1 * var(--pin-long) - 36px); width:40px; text-align:right; font-size:12px; color:#222; user-select:none}
+  .term-label{position:absolute;left:calc(-1 * var(--pin-long) - 36px);width:40px;text-align:right;font-size:12px;color:#222;user-select:none}
 
-  /* ----------------- CABLES ----------------- */
-  #wires{position:absolute; top:0; left:0; width:var(--workspace-size); height:var(--workspace-size); pointer-events:auto; z-index:6}
-  .wire-hit{fill:none; stroke:#000; stroke-width:40; stroke-opacity:0; vector-effect:non-scaling-stroke; pointer-events:stroke; stroke-linecap:round}
-  .wire-path{fill:none; stroke:var(--wire); stroke-width:5; vector-effect:non-scaling-stroke; pointer-events:stroke}
-  .wire-path.signal{stroke:var(--neon); stroke-width:6; filter:drop-shadow(0 0 8px rgba(0,255,102,.25))}
-  .wire-path.selected{stroke:#0078d7; stroke-width:6}
-  .wire-path.ghost{stroke-dasharray:6 6; opacity:.75}
+  /* Cables */
+  #wires{position:absolute;top:0;left:0;width:var(--workspace-size);height:var(--workspace-size);pointer-events:auto;z-index:6}
+  .wire-hit{fill:none;stroke:#000;stroke-width:40;stroke-opacity:0;vector-effect:non-scaling-stroke;pointer-events:stroke;stroke-linecap:round}
+  .wire-path{fill:none;stroke:var(--wire);stroke-width:5;vector-effect:non-scaling-stroke;pointer-events:stroke}
+  .wire-path.signal{stroke:var(--neon);stroke-width:6;filter:drop-shadow(0 0 8px rgba(0,255,102,.25))}
+  .wire-path.selected{stroke:#0078d7;stroke-width:6}
+  .wire-path.ghost{stroke-dasharray:6 6;opacity:.75}
 
-  /* HUBS */
-  .hub-dot{fill:#000; stroke:#000; stroke-width:1.5; pointer-events:all; cursor:grab}
-  .hub-hit{fill:#000; fill-opacity:0; pointer-events:all; cursor:grab}
-  .hub-dot.signal{fill:var(--neon); stroke:var(--neon); filter:drop-shadow(0 0 8px rgba(0,255,102,.45))}
+  /* Hubs (juntas) */
+  .hub-dot{fill:#000;stroke:#000;stroke-width:1.5;pointer-events:all;cursor:grab}
+  .hub-hit{fill:#000;fill-opacity:0;pointer-events:all;cursor:grab}
+  .hub-dot.signal{fill:var(--neon);stroke:var(--neon);filter:drop-shadow(0 0 8px rgba(0,255,102,.45))}
 
-  /* HANDLES */
-  .bend-handle{fill:#fff; stroke:#0078d7; stroke-width:2.5px; r:11; cursor:grab; pointer-events:all}
+  /* Handles (nodos) */
+  .bend-handle{fill:#fff;stroke:#0078d7;stroke-width:2.5px;r:11;cursor:grab;pointer-events:all}
   .bend-handle.dragging{fill:#e6f3ff}
-  .bend-hit{fill:#000; fill-opacity:0; r:24; pointer-events:all}
+  .bend-hit{fill:#000;fill-opacity:0;r:24;pointer-events:all}
 
-  /* ETIQUETAS */
-  .conn-tag{position:absolute; transform:translate(-50%,-50%); background:#fff; border:3px solid #003366; color:#003366; border-radius:12px; padding:6px 12px; font-weight:900; font-size:27px; line-height:1; box-shadow:0 2px 0 rgba(0,0,0,.06); user-select:none; z-index:20; cursor:grab}
-  .conn-tag-src{background:#003366; color:#fff}
-  .conn-tag.selected{outline:3px solid #0078d7; outline-offset:2px}
-  .conn-tag.signal{background:var(--neon); color:#000; border-color:var(--neon); box-shadow:0 0 12px rgba(0,255,102,.45)}
+  /* Etiquetas */
+  .conn-tag{position:absolute;transform:translate(-50%,-50%);background:#fff;border:3px solid #003366;color:#003366;border-radius:12px;padding:6px 12px;font-weight:900;font-size:27px;line-height:1;box-shadow:0 2px 0 rgba(0,0,0,.06);user-select:none;z-index:20;cursor:grab}
+  .conn-tag-src{background:#003366;color:#fff}
+  .conn-tag.selected{outline:3px solid #0078d7;outline-offset:2px}
+  .conn-tag.signal{background:var(--neon);color:#000;border-color:var(--neon);box-shadow:0 0 12px rgba(0,255,102,.45)}
 
-  /* CONTROLES ABAJO (solo zoom) */
-  #controls{
-    position:fixed; bottom:12px; left:50%; transform:translateX(-50%);
-    background:var(--sidebar); padding:8px 12px; border-radius:10px;
-    border:2px solid #bdb089; display:flex; gap:10px; align-items:center; z-index:200
-  }
-  #controls button{padding:8px 10px; border-radius:8px; border:1px solid #777; background:#fff; font-weight:700; cursor:pointer}
-  #zoomIn,#zoomOut{padding:6px 10px}
+  /* Indicador Q */
+  .q-indicator{width:18px;height:18px;border-radius:50%;background:#444;margin-top:8px;pointer-events:none;border:2px solid #222}
+  .q-indicator.on{background:var(--neon);box-shadow:0 0 8px rgba(0,255,102,.45)}
 
-  .q-indicator{width:18px; height:18px; border-radius:50%; background:#444; margin-top:8px; pointer-events:none; border:2px solid #222}
-  .q-indicator.on{background:var(--neon); box-shadow:0 0 8px rgba(0,255,102,.45)}
+  #brand{position:fixed;right:12px;bottom:12px;background:rgba(0,0,0,.06);padding:8px 12px;border-radius:8px;font-weight:900;letter-spacing:1px;z-index:60;box-shadow:0 6px 0 rgba(0,0,0,.04)}
 
-  /* Marca */
-  #brand{position:fixed; right:12px; bottom:12px; background:rgba(0,0,0,.06); padding:8px 12px; border-radius:8px; font-weight:900; letter-spacing:1px; z-index:60; box-shadow:0 6px 0 rgba(0,0,0,.04)}
+  #installBtn{display:none;position:fixed;right:12px;bottom:80px;z-index:210;background:#003366;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:900;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.12)}
 
-  #installBtn{display:none; position:fixed; right:12px; bottom:80px; z-index:210; background:#003366; color:#fff; border:none; padding:10px 14px; border-radius:10px; font-weight:900; cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,.12)}
-
-  /* Paleta móvil (opcional) */
-  #fabPalette{position:fixed; left:12px; bottom:12px; z-index:210; background:#003366; color:#fff; border:none; padding:12px 14px; border-radius:999px; font-weight:900; cursor:pointer; box-shadow:0 6px 0 rgba(0,0,0,.12); display:none}
-  #paletteModal{position:fixed; inset:0; display:none; z-index:220; background:rgba(0,0,0,.35)}
-  #paletteSheet{position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:16px 16px 0 0; padding:14px; border-top:3px solid #003366}
-  #paletteGrid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px}
-  .pick{background:#fff8dc; border:2px solid #7a7a7a; border-radius:10px; padding:10px; font-weight:800; font-size:20px; text-align:center; cursor:pointer}
+  /* FAB y paleta móvil */
+  #fabPalette{position:fixed;left:12px;bottom:12px;z-index:210;background:#003366;color:#fff;border:none;padding:12px 14px;border-radius:999px;font-weight:900;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.12);display:none}
+  #paletteModal{position:fixed;inset:0;display:none;z-index:220;background:rgba(0,0,0,.35)}
+  #paletteSheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:14px;border-top:3px solid #003366}
+  #paletteGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .pick{background:#fff8dc;border:2px solid #7a7a7a;border-radius:10px;padding:10px;font-weight:800;font-size:20px;text-align:center;cursor:pointer}
 
   /* Menú contextual del cable */
-  #wireMenu{position:fixed; z-index:230; display:none; background:#fff; border:2px solid #003366; border-radius:12px; box-shadow:0 10px 24px rgba(0,0,0,.18); overflow:hidden}
-  #wireMenu button{display:block; width:100%; background:#fff; border:0; border-bottom:1px solid #e5e5e5; padding:10px 14px; font-weight:800; cursor:pointer; text-align:left}
+  #wireMenu{position:fixed;z-index:230;display:none;background:#fff;border:2px solid #00366; border-color:#003366;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.18);overflow:hidden}
+  #wireMenu button{display:block;width:100%;background:#fff;border:0;border-bottom:1px solid #e5e5e5;padding:10px 14px;font-weight:800;cursor:pointer;text-align:left}
   #wireMenu button:last-child{border-bottom:0}
   #wireMenu button:hover{background:#f5f9ff}
 
+  /* Modal temporizador */
+  #timerModal{position:fixed;inset:0;display:none;z-index:300;background:rgba(0,0,0,.4)}
+  #timerCard{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;border:2px solid #003366;box-shadow:0 10px 24px rgba(0,0,0,.2);padding:14px;min-width:280px}
+  #timerCard h3{margin:0 0 8px;font-size:18px;color:#003366}
+  #timerCard label{display:block;font-weight:700;margin-bottom:6px}
+  #timerCard input{width:100%;padding:8px;border:2px solid #bbb;border-radius:8px;font-weight:700}
+  #timerActions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+  #timerActions button{padding:8px 10px;border-radius:8px;border:1px solid #777;background:#fff;font-weight:800;cursor:pointer}
+  #btnTimerSave{background:#003366;color:#fff;border-color:#003366}
+
   @supports(padding:max(0px)){
-    #controls{bottom:calc(12px + env(safe-area-inset-bottom))}
     #installBtn{bottom:calc(80px + env(safe-area-inset-bottom))}
     #fabPalette{bottom:calc(12px + env(safe-area-inset-bottom))}
   }
@@ -154,26 +140,34 @@
     #fabPalette{display:block}
   }
 </style>
+<div id="uuidMachine">5bb0ff35-3abb-4766-8972-5bda4eb553b0</div>
+<style>
+  #delete-debug{position:fixed;right:10px;bottom:10px;background:#111;color:#fff;
+  font:12px/1.2 system-ui,Segoe UI,Roboto,Arial,sans-serif;border-radius:8px;
+  padding:8px 10px;opacity:.85;z-index:999999;display:none}
+  #delete-debug b{color:#93c5fd}
+</style>
+
 </head>
-<body class="">
+<body>
 
-  <!-- TOPBAR -->
+  <!-- Topbar -->
   <div id="topbar">
-    <button id="btnLib" class="btn icon" title="Biblioteca 🧩">🧩</button>
-    <div class="title">LOGICSOFT</div>
-
-    <div id="actionGroup">
-      <button id="btnSim" class="btn">Simular</button>
-      <button id="btnStop" class="btn">Detener</button>
-      <button id="btnDelete" class="btn">Eliminar</button>
-      <button id="btnSave" class="btn">Guardar</button>
-      <label for="fileInput" class="btn">Importar</label>
-      <input id="fileInput" type="file" accept=".json,.LOGICSOFT.json" />
-    </div>
+    <button id="burger">☰</button>
+    <button id="btnSave">Guardar</button>
+    <button id="btnLoad">Importar</button>
+    <input id="loadInput" type="file" accept="application/json" style="display:none">
+    <div id="spacer"></div>
+    <button id="simulate">Simular</button>
+    <button id="stop">Detener</button>
+    <button id="deleteBtn">Eliminar</button>
+    <button id="zoomOut" title="Alejar">−</button>
+    <button id="zoomIn" title="Acercar">＋</button>
   </div>
 
-  <!-- SIDEBAR (BIBLIOTECA) - OCULTA POR DEFECTO -->
+  <!-- Biblioteca (oculta por defecto, se abre con ☰) -->
   <div id="sidebar">
+    <div style="font-weight:900">SIMUPASIR — Componentes</div>
     <div class="component" draggable="true" data-type="input">Entrada (I)</div>
     <div class="component" draggable="true" data-type="output">Salida (Q)</div>
     <div class="component" draggable="true" data-type="M">Memoria (M)</div>
@@ -187,27 +181,25 @@
     <div class="component" draggable="true" data-type="xnor">XNOR</div>
     <div style="height:4px"></div>
     <div class="component" draggable="true" data-type="sr">SR (Set/Reset)</div>
+    <div style="height:4px"></div>
+    <div class="component" draggable="true" data-type="ton">TON</div>
+    <div class="component" draggable="true" data-type="toff">TOFF</div>
     <div style="flex:1"></div>
+    <div style="font-size:11px;color:#333">Arrastra un bloque al área.</div>
   </div>
 
-  <!-- CANVAS -->
+  <!-- Lienzo -->
   <div id="canvas">
     <div id="workspace">
       <svg id="wires" xmlns="http://www.w3.org/2000/svg" width="5000" height="5000" viewBox="0 0 5000 5000" preserveAspectRatio="none"></svg>
     </div>
-
-    <!-- Controles inferiores: solo zoom -->
-    <div id="controls">
-      <button id="zoomOut" title="Alejar">−</button>
-      <button id="zoomIn" title="Acercar">＋</button>
-    </div>
   </div>
 
-  <div id="brand">LOGICSOFT</div>
-  <button id="installBtn">Instalar LOGICSOFT</button>
+  <div id="brand">SIMUPASIR</div>
+  <button id="installBtn">Instalar SIMUPASIR</button>
   <button id="fabPalette">🧩 Bloques</button>
 
-  <!-- Modal paleta -->
+  <!-- Paleta móvil -->
   <div id="paletteModal" aria-hidden="true">
     <div id="paletteSheet">
       <div style="font-weight:900;margin-bottom:10px;color:#003366">Elige un bloque</div>
@@ -224,6 +216,19 @@
     <button id="menuMakeLabel">🏷️ Crear etiqueta y eliminar cable</button>
   </div>
 
+  <!-- Modal de configuración de temporizadores -->
+  <div id="timerModal">
+    <div id="timerCard">
+      <h3 id="timerTitle">Configurar temporizador</h3>
+      <label for="timerSec">Tiempo (s)</label>
+      <input id="timerSec" type="number" min="0" step="0.1" value="1">
+      <div id="timerActions">
+        <button id="btnTimerCancel">Cancelar</button>
+        <button id="btnTimerSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
 <script>
 /* ===== PWA básico ===== */
 let deferredPrompt=null;
@@ -232,12 +237,19 @@ window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferre
 installBtn.addEventListener('click', async()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; installBtn.style.display='none'; deferredPrompt=null; });
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('./service-worker.js').catch(console.error); }); }
 
-/* ===== LOGICSOFT ===== */
-const body = document.body;
+/* ===== SIMUPASIR ===== */
+const burger = document.getElementById('burger');
+const sidebar = document.getElementById('sidebar');
+burger.addEventListener('click', ()=>{ sidebar.classList.toggle('open'); });
+
 const canvas = document.getElementById("canvas");
 const workspace = document.getElementById("workspace");
 const wiresSVG = document.getElementById("wires");
 const components = document.querySelectorAll(".component");
+const btnSave = document.getElementById('btnSave');
+const btnLoad = document.getElementById('btnLoad');
+const loadInput = document.getElementById('loadInput');
+const deleteBtn = document.getElementById('deleteBtn');
 
 let nodes=[], connections=[], pendingOutput=null, pendingGhost=null;
 let simulation=false;
@@ -256,19 +268,42 @@ let selectedPinEl=null;
 /* Hubs (juntas) por pin de salida */
 const outputHubs = new WeakMap(); // pinEl -> { x,y, dot, hit, stemPath, branches:Set }
 
-/* ======== TOPBAR acciones ======== */
-const btnLib  = document.getElementById('btnLib');
-const btnSim  = document.getElementById('btnSim');
-const btnStop = document.getElementById('btnStop');
-const btnDel  = document.getElementById('btnDelete');
-const btnSave = document.getElementById('btnSave');
-const inpFile = document.getElementById('fileInput');
+/* ==== Temporizador Modal (segundos) ==== */
+const timerModal = document.getElementById('timerModal');
+const timerTitle = document.getElementById('timerTitle');
+const timerSecInput = document.getElementById('timerSec');
+const btnTimerCancel = document.getElementById('btnTimerCancel');
+const btnTimerSave = document.getElementById('btnTimerSave');
+let timerNode=null;
 
-/* Biblioteca: mostrar/ocultar (oculta por defecto) */
-body.classList.remove('show-lib'); // por defecto oculto
-btnLib.addEventListener('click', ()=>{ body.classList.toggle('show-lib'); });
+function openTimerModal(node){
+  timerNode = node;
+  const kind = node.type.toUpperCase();
+  const code = node.code || node.name;
+  timerTitle.textContent = `Configurar ${kind} (${code})`;
+  const sec = Math.max(0, Math.round(((node.delayMs ?? 1000)/1000)*10)/10);
+  timerSecInput.value = sec;
+  timerModal.style.display='block';
+}
+function closeTimerModal(){
+  timerModal.style.display='none';
+  timerNode=null;
+}
+btnTimerCancel.addEventListener('click', closeTimerModal);
+btnTimerSave.addEventListener('click', ()=>{
+  if(!timerNode) return;
+  let sec = parseFloat(timerSecInput.value);
+  if(isNaN(sec)||sec<0) sec=0;
+  timerNode.delayMs = Math.round(sec*1000);
+  // reset de estado interno del temporizador
+  timerNode.timerStart=null;
+  timerNode.seenHigh=false;   // para TOFF
+  timerNode.prevIn=0;
+  closeTimerModal();
+});
+timerModal.addEventListener('click',(e)=>{ if(e.target===timerModal) closeTimerModal(); });
 
-/* ===== Helpers ===== */
+/* ===== Util ===== */
 function zpad(n,len=3){ return String(n).padStart(len,'0'); }
 function logoLabelForType(type){
   switch(type){
@@ -281,6 +316,8 @@ function logoLabelForType(type){
     case 'xnor': return '≠1';
     case 'sr':   return 'S/R';
     case 'M':    return 'M';
+    case 'ton':  return 'TON';
+    case 'toff': return 'TOFF';
     default:     return (type||'').toUpperCase();
   }
 }
@@ -365,10 +402,10 @@ workspace.addEventListener('touchend', e=>{
   if(!still) touchPan.active=false;
 });
 
-/* DnD (PC) + sidebar click (PC) */
+/* DnD + selección paleta */
 components.forEach(comp=>{
   comp.addEventListener("dragstart", e=>{
-    e.dataTransfer.setData("application/x-LOGICSOFT", comp.dataset.type);
+    e.dataTransfer.setData("application/x-simupasir", comp.dataset.type);
     e.dataTransfer.setData("text/plain", comp.dataset.type);
     e.dataTransfer.effectAllowed='copy';
   });
@@ -377,18 +414,24 @@ components.forEach(comp=>{
 canvas.addEventListener("dragover", e=>{ e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
 canvas.addEventListener("drop", e=>{
   e.preventDefault(); if(simulation) return;
-  const type=e.dataTransfer.getData("application/x-LOGICSOFT")||e.dataTransfer.getData("text/plain");
+  const type=e.dataTransfer.getData("application/x-simupasir")||e.dataTransfer.getData("text/plain");
   if(!type) return; const pos=clientToWorkspace(e.clientX,e.clientY); createNode(type,pos.x,pos.y);
 });
 
-/* Paleta (móvil) */
+/* Paleta móvil */
 const fab = document.getElementById('fabPalette');
 const modal = document.getElementById('paletteModal');
 const grid = document.getElementById('paletteGrid');
 const closePalette = document.getElementById('closePalette');
-const PALETTE_TYPES = ['input','output','M','and','or','not','nand','nor','xor','xnor','sr'];
+const PALETTE_TYPES = ['input','output','M','and','or','not','nand','nor','xor','xnor','sr','ton','toff'];
 function openPalette(){
-  grid.innerHTML=''; PALETTE_TYPES.forEach(t=>{ const b=document.createElement('button'); b.className='pick'; b.textContent=t.toUpperCase(); b.onclick=()=>{ currentToPlace=t; closePaletteModal(); }; grid.appendChild(b); });
+  grid.innerHTML='';
+  PALETTE_TYPES.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='pick'; b.textContent=t.toUpperCase();
+    b.onclick=()=>{ currentToPlace=t; closePaletteModal(); };
+    grid.appendChild(b);
+  });
   modal.style.display='block'; modal.setAttribute('aria-hidden','false');
 }
 function closePaletteModal(){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }
@@ -413,6 +456,36 @@ function selectConnection(conn){ if(simulation) return; clearSelection(); select
 function selectTag(tag){ if(selectedTag===tag) return; selectedTag?.classList.remove('selected'); selectedTag=tag; tag.classList.add('selected'); if(selectedConn){ selectedConn.path?.classList.remove('selected'); selectedConn.selected=false; selectedConn=null; } }
 function clearSelection(){
   if(selectedNode){ selectedNode.el.classList.remove('selected'); selectedNode=null; }
+
+function deleteSelected(){
+  if(simulation) return;
+  // Prioridad: nodo seleccionado > conexión seleccionada > rama/etiqueta seleccionada
+  if(selectedNode){
+    removeNode(selectedNode);
+    return;
+  }
+  if(selectedConn){
+    removeConnection(selectedConn);
+    return;
+  }
+  if(selectedBranch){
+    const connByBranch = connections.find(c => c.srcBranch === selectedBranch || c.dstBranch === selectedBranch);
+    if(connByBranch){
+      removeConnection(connByBranch);
+      return;
+    }
+  }
+  if(selectedTag){
+    const connByTag = connections.find(c => (c.srcBranch && c.srcBranch.tagEl === selectedTag) || (c.dstBranch && c.dstBranch.tagEl === selectedTag));
+    if(connByTag){
+      removeConnection(connByTag);
+      return;
+    }
+  }
+  // nada seleccionado: no hacemos nada, pero limpiamos estados fantasma por si acaso
+  removeGhost();
+}
+
   if(selectedConn){ selectedConn.path?.classList.remove('selected'); selectedConn.selected=false; selectedConn=null; }
   if(selectedTag){ selectedTag.classList.remove('selected'); selectedTag=null; }
   if(selectedBranch){ selectedBranch=null; }
@@ -423,6 +496,7 @@ function clearSelection(){
 }
 
 /* Crear bloque */
+let nextNodeId=1;
 function createNode(type,x,y){
   const div=document.createElement('div'); div.className='node'; div.style.left=x+'px'; div.style.top=y+'px';
 
@@ -447,9 +521,11 @@ function createNode(type,x,y){
 
   const inputs=[];
   if(type==='input'){ div.style.background='#ffe4b5'; }
-  else if(type==='output'||type==='M'){ const inp=document.createElement('div'); inp.className='terminal input'; inp.style.top='50%'; div.appendChild(inp); inputs.push(inp); }
-  else if(type==='not'){ const inp=document.createElement('div'); inp.className='terminal input'; inp.style.top='50%'; div.appendChild(inp); inputs.push(inp); }
-  else if(type==='sr'){
+  else if(type==='output'||type==='M' || type==='ton' || type==='toff'){
+    const inp=document.createElement('div'); inp.className='terminal input'; inp.style.top='50%'; div.appendChild(inp); inputs.push(inp);
+  } else if(type==='not'){
+    const inp=document.createElement('div'); inp.className='terminal input'; inp.style.top='50%'; div.appendChild(inp); inputs.push(inp);
+  } else if(type==='sr'){
     const inS=document.createElement('div'); inS.className='terminal input'; inS.style.top='28%';
     const labelS=document.createElement('div'); labelS.className='term-label'; labelS.style.top='24%'; labelS.textContent='S';
     const inR=document.createElement('div'); inR.className='terminal input'; inR.style.top='72%';
@@ -467,7 +543,29 @@ function createNode(type,x,y){
 
   workspace.appendChild(div);
 
-  const node={ el:div, type, name:display, code:blockCode, inputs, output, value:0, nextValue:0, qIndicator:qind, invalid:false };
+  const node={ id:nextNodeId++, el:div, type, name:display, code:blockCode, inputs, output, value:0, nextValue:0, qIndicator:qind, invalid:false };
+
+  /* Estado extra para temporizadores */
+  if(type==='ton' || type==='toff'){
+    node.delayMs = 1000;     // por defecto 1s
+    node.timerStart = null;  // instante de inicio del conteo
+    node.prevIn = 0;         // último valor de entrada
+  }
+  if(type==='toff'){
+    node.seenHigh = false;   // aún no fue energizado
+  }
+
+  // Doble clic/tap para configurar temporizador (no borra el bloque)
+  if(type==='ton' || type==='toff'){
+    div.addEventListener('dblclick', (e)=>{ e.stopPropagation(); openTimerModal(node); });
+    let lastTap=0;
+    div.addEventListener('touchend', (e)=>{
+      const now=e.timeStamp || Date.now();
+      if(now - lastTap < 350){ openTimerModal(node); }
+      lastTap=now;
+    });
+  }
+
   if(type==='sr') node.q=0;
   nodes.push(node);
 
@@ -485,7 +583,7 @@ function createNode(type,x,y){
   updateConnections();
 }
 
-/* Mover bloque (requiere seleccionado) */
+/* Mover bloque (cuando está seleccionado) */
 function dragMove(el,node){
   let sx,sy,ix,iy,dragging=false;
   el.addEventListener('mousedown', e=>{
@@ -547,7 +645,7 @@ function trackGhost(e){ if(!pendingGhost||!pendingOutput) return; const p=client
 function trackGhostTouch(e){ if(!pendingGhost||!pendingOutput) return; const t=e.touches[0]; const p=clientToWorkspace(t.clientX,t.clientY); const s=terminalEdge(pendingOutput); updateGhostPath(pendingGhost,s.x,s.y,p.x,p.y); e.preventDefault(); }
 function updateGhostPath(path,sx,sy,ex,ey){ const midX=(sx+ex)/2; path.setAttribute('d',`M${sx},${sy} L${midX},${sy} L${midX},${ey} L${ex},${ey}`); }
 
-/* ===== Helpers etiquetas ===== */
+/* ===== Etiquetas & hubs ===== */
 function getSourceName(conn){
   const srcNode = nodes.find(n=>n.output===conn.from);
   if(!srcNode) return '??';
@@ -561,12 +659,9 @@ function getDestNameWithPin(conn){
   if(dstNode.type==='input'||dstNode.type==='output'||dstNode.type==='M') return `${dstNode.name}/${pinIndex}`;
   return `${dstNode.code || 'B???'}/${pinIndex}`;
 }
-
-/* ===== Hubs (juntas) de salida ===== */
 function ensureHub(pinEl){
   let hub = outputHubs.get(pinEl);
   if(hub) return hub;
-
   const p = terminalEdge(pinEl);
   const x = p.x + 18, y = p.y;
   const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
@@ -575,14 +670,9 @@ function ensureHub(pinEl){
   const hit = document.createElementNS("http://www.w3.org/2000/svg","circle");
   hit.setAttribute('cx', x); hit.setAttribute('cy', y); hit.setAttribute('r', 18);
   hit.setAttribute('class','hub-hit');
-
   const stem = document.createElementNS("http://www.w3.org/2000/svg","path");
-  stem.setAttribute('class','wire-path'); // troncal corto desde pin → hub
-
-  wiresSVG.appendChild(stem);
-  wiresSVG.appendChild(hit);
-  wiresSVG.appendChild(dot);
-
+  stem.setAttribute('class','wire-path');
+  wiresSVG.appendChild(stem); wiresSVG.appendChild(hit); wiresSVG.appendChild(dot);
   const hubObj = { x, y, dot, hit, stemPath:stem, pin:pinEl, branches:new Set() };
   outputHubs.set(pinEl, hubObj);
 
@@ -620,15 +710,11 @@ function ensureHub(pinEl){
 function renderHub(hub){
   hub.dot.setAttribute('cx', hub.x); hub.dot.setAttribute('cy', hub.y);
   hub.hit.setAttribute('cx', hub.x); hub.hit.setAttribute('cy', hub.y);
-
   const e = terminalEdge(hub.pin);
   const d = `M${e.x},${e.y} L${hub.x-10},${e.y} L${hub.x-10},${hub.y} L${hub.x},${hub.y}`;
   hub.stemPath.setAttribute('d', d);
-
   for (const br of hub.branches) renderBranch(br);
 }
-
-/* ===== Estructuras de rama/etiqueta ===== */
 function createTagEl(text, isSource){
   const tag = document.createElement('div');
   tag.className = 'conn-tag' + (isSource ? ' conn-tag-src' : '');
@@ -636,7 +722,6 @@ function createTagEl(text, isSource){
   workspace.appendChild(tag);
   return tag;
 }
-
 function attachDragToTag(branch){
   const tag = branch.tagEl;
   let dragging=false, sx=0, sy=0, ox=0, oy=0;
@@ -671,31 +756,17 @@ function attachDragToTag(branch){
   tag.addEventListener('touchstart', start, {passive:false});
   tag.addEventListener('click', (e)=>{ e.stopPropagation(); selectTag(tag); });
 }
-
-/* Crea una rama desde HUB o desde PIN (entrada) hacia la etiqueta */
 function createBranch({fromHub, hub, fromPin, pinEl, text}){
   const path = document.createElementNS("http://www.w3.org/2000/svg","path");
   path.setAttribute('class','wire-path');
   const hit  = document.createElementNS("http://www.w3.org/2000/svg","path");
   hit.setAttribute('class','wire-hit');
-
-  wiresSVG.appendChild(hit);
-  wiresSVG.appendChild(path);
-
+  wiresSVG.appendChild(hit); wiresSVG.appendChild(path);
   const tag = createTagEl(text, !!fromHub);
-
   let start;
   if(fromHub) start = {x:hub.x, y:hub.y};
   else { const e=terminalEdge(pinEl); start = {x:e.x-40, y:e.y}; }
-
-  const branch = {
-    fromHub, hub, fromPin, pinEl,
-    path, hit, tagEl:tag,
-    bends:[],
-    tx: start.x + (fromHub? 60 : -60),
-    ty: start.y - 20
-  };
-
+  const branch = { fromHub, hub, fromPin, pinEl, path, hit, tagEl:tag, bends:[], tx: start.x + (fromHub? 60 : -60), ty: start.y - 20 };
   const onLP = (ev)=>{
     ev.stopPropagation();
     let cancelled=false;
@@ -714,24 +785,17 @@ function createBranch({fromHub, hub, fromPin, pinEl, text}){
   path.addEventListener('touchstart', onLP, {passive:false});
   hit .addEventListener('mousedown', onLP);
   hit .addEventListener('touchstart', onLP, {passive:false});
-
   attachDragToTag(branch);
   renderBranch(branch);
-
   const onSel=(e)=>{ e.stopPropagation(); selectedBranch=branch; selectTag(tag); };
   hit.addEventListener('click', onSel);
   hit.addEventListener('touchstart', onSel, {passive:true});
-
   return branch;
 }
-
-/* Render de una rama (desde hub o pin) hasta la etiqueta */
 function renderBranch(branch){
   const sx = branch.fromHub ? branch.hub.x : terminalEdge(branch.pinEl).x;
   const sy = branch.fromHub ? branch.hub.y : terminalEdge(branch.pinEl).y;
-
   const ex = branch.tx, ey = branch.ty;
-
   let d='';
   if(branch.bends.length===0){
     const midX=(sx+ex)/2; d=`M${sx},${sy} L${midX},${sy} L${midX},${ey} L${ex},${ey}`;
@@ -741,28 +805,21 @@ function renderBranch(branch){
   }
   branch.path.setAttribute('d', d);
   branch.hit.setAttribute('d', d);
-
   branch.tagEl.style.left = ex + 'px';
   branch.tagEl.style.top  = ey + 'px';
 }
-
-/* Convertir un cable a etiquetas + hub/ramas en salida y cable en entrada */
 function convertWireToLabel(conn){
   conn.path && conn.path.remove(); conn.path=null;
   conn.hit && conn.hit.remove(); conn.hit=null;
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-
-  const srcName = getDestNameWithPin(conn); // etiqueta en salida: destino/pin
-  const inName  = getSourceName(conn);      // etiqueta en entrada: origen
-
+  const srcName = getDestNameWithPin(conn);
+  const inName  = getSourceName(conn);
   const hub = ensureHub(conn.from);
   const srcBranch = createBranch({fromHub:true, hub, text:srcName});
   hub.branches.add(srcBranch);
   conn.srcBranch = srcBranch;
-
   const dstBranch = createBranch({fromHub:false, pinEl:conn.to, text:inName});
   conn.dstBranch = dstBranch;
-
   conn.mode = 'label';
   renderConnection(conn);
 }
@@ -771,17 +828,15 @@ function convertWireToLabel(conn){
 function createConnection(fromTerm,toTerm){
   if(simulation) return;
   if(connections.find(c => c.from===fromTerm && c.to===toTerm)) return;
-  const conn={ from:fromTerm, to:toTerm, path:null, hit:null, bends:[], handles:[], selected:false, mode:'wire',
-               srcBranch:null, dstBranch:null };
+  const conn={ from:fromTerm, to:toTerm, path:null, hit:null, bends:[], handles:[], selected:false, mode:'wire', srcBranch:null, dstBranch:null };
   connections.push(conn); renderConnection(conn);
 }
 
-/* Menú contextual en cables (solo modo wire) */
+/* Menú contextual cables */
 const wireMenu = document.getElementById('wireMenu');
 const menuAddNode = document.getElementById('menuAddNode');
 const menuMakeLabel = document.getElementById('menuMakeLabel');
 let menuContext = { conn:null, clientX:0, clientY:0 };
-
 function showWireMenu(conn, clientX, clientY){
   menuContext = { conn, clientX, clientY };
   wireMenu.style.display='block';
@@ -809,13 +864,12 @@ menuMakeLabel.addEventListener('click', ()=>{
 });
 document.addEventListener('click', (e)=>{ if(e.target!==wireMenu && !wireMenu.contains(e.target)) hideWireMenu(); });
 
-/* ===== Señales (pines/etiquetas/ramas/hub) ===== */
+/* ===== Señal visual ===== */
 function applySignalStyles(conn, val){
   try{
     conn.from.classList.toggle('signal-on', val===1);
     conn.to.classList.toggle('signal-on',   val===1);
   }catch(e){}
-
   if(conn.mode==='label'){
     if(conn.srcBranch){
       conn.srcBranch.path.classList.toggle('signal', val===1);
@@ -833,7 +887,6 @@ function applySignalStyles(conn, val){
   }else{
     if(conn.path) conn.path.classList.toggle('signal', val===1);
   }
-
   const srcNode=nodes.find(n=>n.output===conn.from);
   if(srcNode){
     srcNode.qIndicator && srcNode.qIndicator.classList.toggle('on', val===1);
@@ -845,23 +898,19 @@ function applySignalStyles(conn, val){
   }
 }
 
-/* Render conexión (wire o label) */
+/* Render conexión */
 function renderConnection(conn){
   if(conn.mode==='label'){
     if(conn.srcBranch) renderBranch(conn.srcBranch);
     if(conn.dstBranch) renderBranch(conn.dstBranch);
     const hub = outputHubs.get(conn.from);
     hub && renderHub(hub);
-
     const val = getSourceNodeValue(conn);
     applySignalStyles(conn, val);
     return;
   }
-
-  // modo wire
   conn.path?.remove(); conn.hit?.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-
   const s=terminalEdge(conn.from), e=terminalEdge(conn.to);
   let d='';
   if(conn.bends.length===0){
@@ -870,21 +919,16 @@ function renderConnection(conn){
     const pts=[{x:s.x,y:s.y}].concat(conn.bends).concat([{x:e.x,y:e.y}]);
     d=`M${pts[0].x},${pts[0].y} `; for(let i=1;i<pts.length;i++){ const prev=pts[i-1], next=pts[i]; d+=`L${next.x},${prev.y} L${next.x},${next.y} `; }
   }
-
   const hit=document.createElementNS("http://www.w3.org/2000/svg","path");
   hit.setAttribute("d",d); hit.setAttribute("class","wire-hit");
-
   const path=document.createElementNS("http://www.w3.org/2000/svg","path");
   path.setAttribute("d",d); path.setAttribute("class","wire-path");
   if(conn.selected) path.classList.add('selected');
-
   const val=getSourceNodeValue(conn);
-
   const onSelect=(ev)=>{ ev.stopPropagation(); if(simulation) return; selectConnection(conn); };
   hit.addEventListener('click',onSelect);
   hit.addEventListener('touchstart',onSelect,{passive:true});
   hit.addEventListener('contextmenu',(ev)=>{ ev.preventDefault(); if(simulation) return; showWireMenu(conn, ev.clientX, ev.clientY); });
-
   function onPathDown(ev){
     if(simulation) return;
     if(ev.type==='mousedown' && ev.button!==0) return;
@@ -904,13 +948,9 @@ function renderConnection(conn){
   path.addEventListener('touchstart',onPathDown,{passive:false});
   hit .addEventListener('mousedown',onPathDown);
   hit .addEventListener('touchstart',onPathDown,{passive:false});
-
-  wiresSVG.appendChild(hit);
-  wiresSVG.appendChild(path);
+  wiresSVG.appendChild(hit); wiresSVG.appendChild(path);
   conn.hit=hit; conn.path=path;
-
   applySignalStyles(conn, val);
-
   if(conn.selected && !simulation){
     conn.handles=[];
     conn.bends.forEach((b,idx)=>{
@@ -928,7 +968,7 @@ function renderConnection(conn){
   }
 }
 
-/* Bend dragging para cables normales */
+/* Bend dragging */
 function startDraggingHandle(conn,index){
   if(conn.handles && conn.handles[index]) conn.handles[index].classList.add('dragging');
   draggingBend={conn,index};
@@ -969,13 +1009,11 @@ function updateConnections(){ connections.forEach(c=>renderConnection(c)); }
 /* Eliminar bloque + cables asociados y limpiar hubs */
 function removeNode(node){
   if(simulation) return;
-
   if(selectedPinEl && (selectedPinEl===node.output || node.inputs.includes(selectedPinEl))){
     selectedPinEl.classList.remove('pin-selected'); selectedPinEl=null; pendingOutput=null; removeGhost();
   }
   const toRemove = connections.filter(c=> c.from===node.output || node.inputs.includes(c.to) );
   toRemove.forEach(removeConnection);
-
   if(node.output){
     const hub = outputHubs.get(node.output);
     if(hub){
@@ -984,20 +1022,14 @@ function removeNode(node){
       outputHubs.delete(node.output);
     }
   }
-
   node.el.remove();
   nodes = nodes.filter(n=>n!==node);
-
-  clearSelection();
-  updateConnections();
+  clearSelection(); updateConnections();
 }
-
-/* Eliminar conexión (wire o label) */
 function removeConnection(conn){
   if(!conn) return;
   conn.path && conn.path.remove(); conn.hit && conn.hit.remove();
   (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
-
   if(conn.srcBranch){
     const hub = conn.srcBranch.hub;
     if(hub){ hub.branches.delete(conn.srcBranch); }
@@ -1012,13 +1044,12 @@ function removeConnection(conn){
     conn.dstBranch.tagEl.remove(); conn.dstBranch.path.remove(); conn.dstBranch.hit.remove();
     conn.dstBranch=null;
   }
-
   const i=connections.indexOf(conn); if(i>=0) connections.splice(i,1);
   if(selectedConn===conn) selectedConn=null;
-  if(selectedTag && (selectedTag===conn.tagSrcEl || selectedTag===conn.tagDstEl)){ selectedTag.classList.remove('selected'); selectedTag=null; }
+  if(selectedTag && (selectedTag===conn.tagSrcEl || conn.tagDstEl===selectedTag)){ selectedTag.classList.remove('selected'); selectedTag=null; }
 }
 
-/* Lógica de compuertas */
+/* ===== Lógica de compuertas y temporizadores ===== */
 function evaluateGate(type,inputs){
   if(inputs.length===0) return 0;
   switch(type){
@@ -1032,31 +1063,63 @@ function evaluateGate(type,inputs){
     default: return inputs[0]||0;
   }
 }
+function nowMs(){ return performance.now ? performance.now() : Date.now(); }
 
 function scanLogic(){
-  nodes.forEach(n=>{ if(n.type==='input') n.value = n.el.classList.contains('active')?1:0; n.invalid=false; });
-
+  const tnow = nowMs();
+  // entradas
+  nodes.forEach(n=>{
+    if(n.type==='input') n.value = n.el.classList.contains('active')?1:0;
+    n.invalid=false;
+  });
+  // calcular nextValue
   nodes.forEach(node=>{
-    node.nextValue=node.value; if(node.type==='input') return;
+    if(node.type==='input'){ node.nextValue=node.value; return; }
     const inVals=connections.filter(c=>node.inputs.includes(c.to)).map(c=>{
       const s=nodes.find(n=>n.output===c.from); return s ? s.value : 0;
     });
-    if(inVals.length===0){
-      if(node.type==='output' || node.type==='M') node.nextValue=0;
-      else if(node.type==='sr') node.nextValue=node.q||0;
-      else node.nextValue=0; return;
-    }
-    if(node.type==='output' || node.type==='M') node.nextValue=inVals[0]?1:0;
-    else if(node.type==='sr'){
+    const in0 = inVals[0]??0;
+
+    if(node.type==='output' || node.type==='M'){
+      node.nextValue=in0?1:0;
+    } else if(node.type==='sr'){
       const S=inVals[0]?1:0, R=inVals[1]?1:0;
       if(S===1 && R===0){ node.q=1; node.nextValue=1; }
       else if(S===0 && R===1){ node.q=0; node.nextValue=0; }
       else node.nextValue=node.q||0;
-    }else node.nextValue=evaluateGate(node.type,inVals)?1:0;
+    } else if(node.type==='ton'){
+      const delay = node.delayMs ?? 1000;
+      if(in0===1){
+        if(node.timerStart==null) node.timerStart = tnow;
+        node.nextValue = (tnow - node.timerStart >= delay) ? 1 : 0;
+      }else{
+        node.timerStart = null;
+        node.nextValue = 0;
+      }
+      node.prevIn = in0;
+    } else if(node.type==='toff'){
+      const delay = node.delayMs ?? 1000;
+      if(in0===1){
+        node.seenHigh = true;
+        node.timerStart = null;
+        node.nextValue = 1;
+      }else{
+        if(!node.seenHigh){
+          node.nextValue = 0;
+          node.timerStart = null;
+        }else{
+          if(node.timerStart==null) node.timerStart = tnow;
+          node.nextValue = (tnow - node.timerStart >= delay) ? 0 : 1;
+        }
+      }
+      node.prevIn = in0;
+    } else {
+      node.nextValue=evaluateGate(node.type,inVals)?1:0;
+    }
   });
-
+  // fijar values
   nodes.forEach(n=>{ n.value=n.nextValue; if(n.type==='sr') n.q=n.nextValue; });
-
+  // visual de bloques
   nodes.forEach(n=>{
     n.el.classList.toggle('has-signal', n.value===1);
     if(n.type==='input' || n.type==='output' || n.type==='M'){
@@ -1065,24 +1128,29 @@ function scanLogic(){
     }
     n.qIndicator && n.qIndicator.classList.toggle('on', n.value===1);
   });
-
+  // actualizar conexiones
   connections.forEach(c=>{
     const v=getSourceNodeValue(c);
     applySignalStyles(c, v);
   });
-
   updateConnections();
 }
 
-/* ====== BOTONES TOP ====== */
-btnSim.addEventListener('click', ()=>{
+/* Botones simulación y zoom */
+document.getElementById('simulate').addEventListener('click', ()=>{
   if(simulation) return;
-  btnSim.classList.add('sim-on');
-  clearSelection(); simulation=true; scanLogic(); simTimer=setInterval(scanLogic,SCAN_MS);
+  clearSelection(); simulation=true;
+  nodes.forEach(n=>{
+    if(n.type==='ton' || n.type==='toff'){
+      n.timerStart = null;
+      n.prevIn = 0;
+    }
+    if(n.type==='toff'){ n.seenHigh = false; }
+  });
+  scanLogic(); simTimer=setInterval(scanLogic,SCAN_MS);
 });
-btnStop.addEventListener('click', ()=>{
+document.getElementById('stop').addEventListener('click', ()=>{
   if(simTimer){ clearInterval(simTimer); simTimer=null; }
-  btnSim.classList.remove('sim-on');
   simulation=false;
   nodes.forEach(n=>{
     n.value=0;
@@ -1092,124 +1160,30 @@ btnStop.addEventListener('click', ()=>{
     n.invalid=false;
     n.output && n.output.classList.remove('signal-on');
     n.inputs?.forEach(inp=>inp.classList.remove('signal-on'));
+    if(n.type==='ton' || n.type==='toff'){ n.timerStart=null; n.prevIn=0; }
+    if(n.type==='toff'){ n.seenHigh=false; }
   });
   connections.forEach(c=>applySignalStyles(c, 0));
   updateConnections();
 });
-btnDel.addEventListener('click', ()=>{
-  if(simulation) return;
-  if(selectedNode){ removeNode(selectedNode); return; }
-  if(selectedConn){ removeConnection(selectedConn); updateConnections(); return; }
-  if(selectedTag && selectedBranch){
-    const conn = connections.find(c=> c.srcBranch===selectedBranch || c.dstBranch===selectedBranch );
-    if(conn){
-      if(conn.srcBranch===selectedBranch){
-        const hub = selectedBranch.hub;
-        hub && hub.branches.delete(selectedBranch);
-        selectedBranch.tagEl.remove(); selectedBranch.path.remove(); selectedBranch.hit.remove();
-        conn.srcBranch=null;
-        if(hub && hub.branches.size===0){
-          hub.stemPath.remove(); hub.dot.remove(); hub.hit.remove();
-          outputHubs.delete(hub.pin);
-        }
-      }else if(conn.dstBranch===selectedBranch){
-        selectedBranch.tagEl.remove(); selectedBranch.path.remove(); selectedBranch.hit.remove();
-        conn.dstBranch=null;
-      }
-      if(!conn.srcBranch && !conn.dstBranch){
-        const i=connections.indexOf(conn); if(i>=0) connections.splice(i,1);
-      }
-      updateConnections();
-    }
-    selectedBranch=null; selectedTag=null;
-    return;
-  }
-});
-
-/* ====== GUARDAR / IMPORTAR (simple) ====== */
-function serializeProject(){
-  // mapear ids
-  const nodeList = nodes.map((n,idx)=>({
-    id: idx,
-    type: n.type,
-    x: parseFloat(n.el.style.left)||0,
-    y: parseFloat(n.el.style.top)||0
-  }));
-  const connList = connections.map(c=>{
-    const srcIdx = nodes.findIndex(n=>n.output===c.from);
-    const dstIdx = nodes.findIndex(n=>n.inputs.includes(c.to));
-    const dstNode = nodes[dstIdx];
-    const inIndex = dstNode ? dstNode.inputs.indexOf(c.to) : 0;
-    return {from:srcIdx, to:dstIdx, toPin:inIndex};
-  });
-  return { version:1, nodes:nodeList, connections:connList, counts:{I:inputCount,Q:outputCount,M:memoryCount,B:blockCodeCount} };
-}
-function saveFile(obj, name="simupasir.json"){
-  const blob = new Blob([JSON.stringify(obj,null,2)], {type:"application/json"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href=url; a.download=name;
-  document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-}
-btnSave.addEventListener('click', ()=>{
-  const data = serializeProject();
-  saveFile(data, 'simupasir.json');
-});
-inpFile.addEventListener('change', async(e)=>{
-  const f=e.target.files?.[0]; if(!f) return;
-  const text = await f.text();
-  try{
-    const data = JSON.parse(text);
-    loadProject(data);
-  }catch(err){ alert("Archivo inválido"); }
-  e.target.value='';
-});
-
-function loadProject(data){
-  // limpiar
-  [...nodes].forEach(n=>removeNode(n));
-  nodes=[]; connections=[]; inputCount=0; outputCount=0; memoryCount=0; blockCodeCount=0;
-
-  // crear nodos
-  (data.nodes||[]).forEach(nd=>{
-    createNode(nd.type, nd.x||0, nd.y||0);
-  });
-
-  // recrear conexiones (como cables rectos)
-  (data.connections||[]).forEach(c=>{
-    const src = nodes[c.from]; const dst = nodes[c.to];
-    if(src && dst && dst.inputs[c.toPin]){
-      createConnection(src.output, dst.inputs[c.toPin]);
-    }
-  });
-
-  // restaurar contadores (opcional)
-  if(data.counts){
-    inputCount = data.counts.I||inputCount;
-    outputCount= data.counts.Q||outputCount;
-    memoryCount= data.counts.M||memoryCount;
-    blockCodeCount=data.counts.B||blockCodeCount;
-  }
-
-  updateConnections();
-}
-
-/* Click en tag para fijar selectedBranch */
-workspace.addEventListener('click', (e)=>{
-  if(e.target.classList && e.target.classList.contains('conn-tag')){
-    for(const conn of connections){
-      if(conn.srcBranch && conn.srcBranch.tagEl===e.target){ selectedBranch=conn.srcBranch; break; }
-      if(conn.dstBranch && conn.dstBranch.tagEl===e.target){ selectedBranch=conn.dstBranch; break; }
-    }
-  }
-});
-
-/* Teclas rápidas */
 document.getElementById('zoomIn').addEventListener('click', ()=>setZoom(scale+0.12));
 document.getElementById('zoomOut').addEventListener('click', ()=>setZoom(scale-0.12));
+
+/* Eliminar selección (pero NO cuando estás escribiendo en inputs) */
 document.addEventListener('keydown', (e)=>{
+  const tag = (e.target && e.target.tagName || '').toLowerCase();
+
+// Click del botón Eliminar
+if (typeof deleteBtn !== 'undefined' && deleteBtn) {
+  deleteBtn.addEventListener('click', () => {
+    if(simulation) return;
+    deleteSelected();
+  });
+}
+  if(tag==='input' || tag==='textarea' || e.target.isContentEditable) return; // <- protege al editar tiempo
   if(e.key==='Delete' || e.key==='Backspace'){
-    if(simulation) return; btnDel.click();
+    if(simulation) return;
+    deleteSelected();
   }
   if(e.key==='Escape'){ clearSelection(); }
 });
@@ -1217,9 +1191,204 @@ document.addEventListener('keydown', (e)=>{
 /* Redibuja en resize */
 window.addEventListener('resize', updateConnections);
 
+/* ====== Guardar / Importar ====== */
+function serialize(){
+  // mapear pines por índice
+  const nodeIndex = new Map(nodes.map((n,i)=>[n, i]));
+  const data = {
+    meta:{ app:"SIMUPASIR", version:1 },
+    counts:{ inputCount, outputCount, memoryCount, blockCodeCount, nextNodeId },
+    nodes: nodes.map(n=>({
+      id:n.id, type:n.type, name:n.name, code:n.code,
+      x:parseFloat(n.el.style.left)||0, y:parseFloat(n.el.style.top)||0,
+      delayMs: (n.type==='ton' || n.type==='toff') ? (n.delayMs ?? 1000) : undefined
+    })),
+    connections: connections.map(c=>{
+      const fromNode = nodes.find(n=>n.output===c.from);
+      const toNode   = nodes.find(n=>n.inputs.includes(c.to));
+      const toIndex  = toNode ? toNode.inputs.indexOf(c.to) : 0;
+      return { fromId: fromNode?.id, toId: toNode?.id, toIndex, mode:c.mode||'wire' };
+    })
+  };
+  return data;
+}
+function download(filename, text){
+  const blob = new Blob([text], {type:"application/json"});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  URL.revokeObjectURL(a.href); a.remove();
+}
+btnSave.addEventListener('click', ()=>{
+  const name = prompt('Nombre del archivo (sin extensión):', 'proyecto');
+  if(name===null) return;
+  const safe = (name.trim() || 'proyecto').replace(/[<>:"/\\|?*\x00-\x1F]/g,'_');
+  const data = serialize();
+  download(safe + '.json', JSON.stringify(data,null,2));
+});
+btnLoad.addEventListener('click', ()=> loadInput.click());
+loadInput.addEventListener('change', async (e)=>{
+  const file = e.target.files?.[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    loadFromData(data);
+  }catch(err){
+    alert('No se pudo importar el archivo.');
+    console.error(err);
+  }finally{
+    loadInput.value = '';
+  }
+});
+function clearAll(){
+  // borra todo del lienzo
+  [...connections].forEach(removeConnection);
+  [...nodes].forEach(n=>removeNode(n));
+  nodes=[]; connections=[];
+  inputCount=outputCount=memoryCount=blockCodeCount=0;
+  nextNodeId=1;
+  updateConnections();
+}
+function loadFromData(data){
+  clearAll();
+  // restaurar contadores
+  if(data.counts){
+    inputCount=data.counts.inputCount||0;
+    outputCount=data.counts.outputCount||0;
+    memoryCount=data.counts.memoryCount||0;
+    blockCodeCount=data.counts.blockCodeCount||0;
+    nextNodeId=data.counts.nextNodeId||1;
+  }
+  const idMap = new Map();
+  // crear nodos
+  for(const n of (data.nodes||[])){
+    const elType = n.type;
+    createNode(elType, n.x||0, n.y||0);
+    const created = nodes[nodes.length-1];
+    // sobreescribir id, name, code
+    created.id = n.id ?? created.id;
+    if(n.name) created.name = n.name;
+    if(n.code && created.code==null){
+      created.code = n.code;
+      // mostrar badge con el código
+      const badge=document.createElement('div'); badge.className='badge'; badge.textContent=n.code;
+      created.el.appendChild(badge);
+    }
+    // actualizar label visible si es I/Q/M basado en contadores previos ya restaurados
+    created.el.querySelector('.label').textContent = logoLabelForType(created.type).match(/^(TON|TOFF|S\/R|[&≥1=1≠1M1])$/) ? created.el.querySelector('.label').textContent : created.name;
+
+    // restaurar delay
+    if((elType==='ton' || elType==='toff') && typeof n.delayMs==='number'){
+      created.delayMs = n.delayMs;
+    }
+    idMap.set(n.id, created);
+  }
+  // crear conexiones
+  for(const c of (data.connections||[])){
+    const fromNode = idMap.get(c.fromId);
+    const toNode   = idMap.get(c.toId);
+    if(!fromNode || !toNode) continue;
+    const toPin = toNode.inputs[c.toIndex||0];
+    createConnection(fromNode.output, toPin);
+    const conn = connections[connections.length-1];
+    if(c.mode==='label'){ convertWireToLabel(conn); }
+  }
+  updateConnections();
+}
+
 /* Init */
 updateConnections();
-console.log("SIMUPASIR: Menú superior con biblioteca oculta por defecto + acciones en topbar.");
+console.log("SIMUPASIR listo: biblioteca en menú, guardar/importar JSON con nombre, temporizadores en segundos.");
 </script>
-</body>
-</html>
+
+
+
+<div id="delete-debug"></div>
+<script>
+(function(){
+  const dbg = document.getElementById('delete-debug');
+  const enabled = (localStorage.getItem('debugDelete') === '1');
+  if (enabled) dbg.style.display = 'block';
+  function logDbg(msg){
+    if (!enabled) return;
+    const time = new Date().toLocaleTimeString();
+    dbg.innerHTML = '<b>DEL</b> ' + time + '<br>' + msg.replaceAll('\n','<br>');
+  }
+  window.__delDbg = logDbg;
+
+  // Strong keydown capture
+  const keyHandler = (e) => {
+    // Evita borrar si estás escribiendo
+    const el = document.activeElement;
+    const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+    if (typing) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      e.stopPropagation();
+      __delDbg('keydown ' + e.key);
+      try { deleteSelected(); } catch(err){ console.error(err); __delDbg('ERR: '+err.message); }
+    }
+  };
+  window.addEventListener('keydown', keyHandler, true);
+  document.addEventListener('keydown', keyHandler, true);
+
+  // Defensive deleteSelected shim (keeps original if exists)
+  const hasOwnDelete = (typeof window.deleteSelected === 'function');
+  if (!hasOwnDelete) {
+    window.deleteSelected = function(){
+      if (typeof simulation !== 'undefined' && simulation) { __delDbg('bloqueado: simulation=true'); return; }
+      // Prefer variables if existen
+      if (typeof selectedNode !== 'undefined' && selectedNode) {
+        __delDbg('delete node via selectedNode');
+        if (typeof removeNode === 'function') { removeNode(selectedNode); return; }
+      }
+      if (typeof selectedConn !== 'undefined' && selectedConn) {
+        __delDbg('delete conn via selectedConn');
+        if (typeof removeConnection === 'function') { removeConnection(selectedConn); return; }
+      }
+      // Fallback DOM: busca algo .selected con data-type / data-id
+      const el = document.querySelector('.selected,[aria-selected="true"]');
+      if (el){
+        const t = el.dataset.type || el.getAttribute('data-type') || el.getAttribute('data-kind');
+        const id = el.dataset.id || el.getAttribute('data-id') || el.id;
+        __delDbg('fallback DOM sel t='+t+' id='+id);
+        if (t && /node/i.test(t) && typeof removeNodeById === 'function') { removeNodeById(id); return; }
+        if (t && /(wire|conn|link|edge)/i.test(t) && typeof removeConnectionById === 'function') { removeConnectionById(id); return; }
+      }
+      __delDbg('nada para borrar');
+    };
+  }
+
+  // Ensure button works
+  const btn = document.getElementById('deleteBtn') || document.querySelector('[data-action="delete"]');
+  if (btn){
+    btn.addEventListener('click', (e)=>{
+      __delDbg('click botón');
+      try { deleteSelected(); } catch(err){ console.error(err); __delDbg('ERR:'+err.message); }
+    });
+  }
+})();
+</script>
+
+
+<script>
+// Opcionales: remoción por ID (por si el proyecto expone arrays globales)
+if (typeof removeNodeById !== 'function') {
+  window.removeNodeById = function(id){
+    if (!id || !Array.isArray(window.nodes)) return;
+    const node = window.nodes.find(n => String(n.id) === String(id));
+    if (node && typeof removeNode === 'function') removeNode(node);
+  }
+}
+if (typeof removeConnectionById !== 'function') {
+  window.removeConnectionById = function(id){
+    if (!id || !Array.isArray(window.connections)) return;
+    const conn = window.connections.find(c => String(c.id) === String(id));
+    if (conn && typeof removeConnection === 'function') removeConnection(conn);
+  }
+}
+</script>
+
+</body></html>
