@@ -1,0 +1,2439 @@
+<!DOCTYPE html>
+<!-- saved from url=(0043)https://pasir2025.github.io/SIMULADOR-LOGO/ -->
+<html lang="es"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LOGICSOFT — TON / TOFF</title>
+
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#003366">
+<link rel="icon" href="https://pasir2025.github.io/SIMULADOR-LOGO/icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="https://pasir2025.github.io/SIMULADOR-LOGO/icons/icon-192.png">
+
+<style>
+  :root{
+    --sidebar:#f3e5ab;
+    --node:#fff8dc;
+    --pin:#222;
+    --wire:#000;
+    --neon:#00ff66;
+    --accent:#444;
+
+    --pin-long:30px;
+    --pin-hit-h:35px;
+    --pin-visible-h:9px;
+    --round-pin:35px;
+
+    --workspace-size:5000px;
+  }
+
+  html,body{height:100%}
+  body{margin:0;font-family:Inter,Arial,Helvetica,sans-serif;display:flex;height:100vh;overflow:hidden;background:#fff}
+
+  /* Topbar */
+  #topbar{
+    position:fixed; inset:0 0 auto 0; height:46px; background:#ffffffcc; backdrop-filter:saturate(1.2) blur(6px);
+    display:flex; align-items:center; gap:8px; padding:6px 8px; z-index:250; border-bottom:1px solid #e7e7e7;
+  }
+  #burger{font-size:20px; font-weight:900; padding:6px 10px; border:1px solid #777; border-radius:8px; background:#fff; cursor:pointer}
+  #topbar button{padding:6px 10px;border-radius:8px;border:1px solid #777;background:#fff;font-weight:700;cursor:pointer}
+  #spacer{flex:1}
+
+  /* Sidebar (biblioteca) */
+  #sidebar{
+    position:fixed; top:46px; bottom:0; left:0; width:180px; background:var(--sidebar); padding:10px;
+    border-right:3px solid #bdb089; display:flex; flex-direction:column; gap:8px; box-sizing:border-box; z-index:200;
+    transform:translateX(-100%); transition:transform .18s ease;
+  }
+  #sidebar.open{transform:translateX(0)}
+  #sidebar > div[style*="font-weight"]{font-size:13px}
+  .component{background:var(--node);border:2px solid #7a7a7a;border-radius:8px;padding:6px;text-align:center;cursor:grab;user-select:none;font-weight:700;font-size:20px;line-height:1.05;box-shadow:0 2px 0 rgba(0,0,0,.06)}
+  .component.selected{outline:3px solid #0078d7;outline-offset:2px}
+
+  /* Canvas */
+  #canvas{flex:1;background:#fff;position:absolute; inset:46px 0 0 0; overflow:hidden; touch-action:none}
+  #workspace{position:absolute;top:0;left:0;width:var(--workspace-size);height:var(--workspace-size);transform-origin:0 0;background:transparent}
+
+  /* Bloques */
+  .node{position:absolute;background:var(--node);border:3px solid var(--accent);border-radius:10px;width:150px;height:225px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:move;user-select:none;padding:8px;box-sizing:border-box;box-shadow:0 6px 0 rgba(0,0,0,.06);z-index:10;touch-action:none}
+  .label{font-weight:900;margin-bottom:6px;pointer-events:none;color:#222;font-size:60px;line-height:1.05}
+  .selected{box-shadow:0 10px 18px rgba(0,0,0,.12);border-color:#0058a3!important;transform:translateY(-2px)}
+  .node.has-signal{border-color:var(--neon)!important; box-shadow:0 0 0 2px rgba(0,255,102,.25), 0 6px 0 rgba(0,0,0,.06)}
+
+  /* Badge B001… */
+  .badge{position:absolute;top:6px;left:6px;padding:4px 10px;border-radius:12px;border:2px solid #003366;background:#fff;color:#003366;font-weight:900;font-size:18px;line-height:1;pointer-events:none;user-select:none;box-shadow:0 2px 0 rgba(0,0,0,.06)}
+
+  /* Pines */
+  .terminal{position:absolute;cursor:pointer;border-radius:8px;box-shadow:0 1px 0 rgba(0,0,0,.08);height:var(--pin-hit-h);background:transparent}
+  .terminal::before{content:"";position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);height:var(--pin-visible-h);border-radius:4px;background:var(--pin);display:block}
+  .terminal.input{width:var(--pin-long);left:calc(-1 * var(--pin-long))}
+  .terminal.output{width:var(--pin-long);right:calc(-1 * var(--pin-long));top:50%;transform:translateY(-50%)}
+  .terminal.output.out-round{width:var(--round-pin);right:calc(-1 * var(--round-pin))}
+  .terminal.output.out-round::before{width:var(--round-pin);height:var(--round-pin);border-radius:50%;background:#000;left:auto;right:0}
+  .terminal.pin-selected::before{background:#0078d7!important;box-shadow:0 0 0 3px rgba(0,120,215,.25)}
+  .terminal.pin-target{outline:2px solid #0078d7;outline-offset:2px}
+  .terminal.signal-on::before{background:var(--neon)!important}
+  .term-label{position:absolute;left:calc(-1 * var(--pin-long) - 36px);width:40px;text-align:right;font-size:12px;color:#222;user-select:none}
+
+  /* Cables */
+  #wires{position:absolute;top:0;left:0;width:var(--workspace-size);height:var(--workspace-size);pointer-events:auto;z-index:6}
+  .wire-hit{fill:none;stroke:#000;stroke-width:40;stroke-opacity:0;vector-effect:non-scaling-stroke;pointer-events:stroke;stroke-linecap:round}
+  .wire-path{fill:none;stroke:var(--wire);stroke-width:5;vector-effect:non-scaling-stroke;pointer-events:stroke}
+  .wire-path.signal{stroke:var(--neon);stroke-width:6;filter:drop-shadow(0 0 8px rgba(0,255,102,.25))}
+  .wire-path.selected{stroke:#0078d7;stroke-width:6}
+  .wire-path.ghost{stroke-dasharray:6 6;opacity:.75}
+
+  /* Hubs (juntas) */
+  .hub-dot{fill:#000;stroke:#000;stroke-width:1.5;pointer-events:all;cursor:grab}
+  .hub-hit{fill:#000;fill-opacity:0;pointer-events:all;cursor:grab}
+  .hub-dot.signal{fill:var(--neon);stroke:var(--neon);filter:drop-shadow(0 0 8px rgba(0,255,102,.45))}
+
+  /* Handles (nodos) */
+  .bend-handle{fill:#fff;stroke:#0078d7;stroke-width:2.5px;r:11;cursor:grab;pointer-events:all}
+  .bend-handle.dragging{fill:#e6f3ff}
+  .bend-hit{fill:#000;fill-opacity:0;r:24;pointer-events:all}
+
+  /* Etiquetas */
+  .conn-tag{position:absolute;transform:translate(-50%,-50%);background:#fff;border:3px solid #003366;color:#003366;border-radius:12px;padding:6px 12px;font-weight:900;font-size:27px;line-height:1;box-shadow:0 2px 0 rgba(0,0,0,.06);user-select:none;z-index:20;cursor:grab}
+  .conn-tag-src{background:#003366;color:#fff}
+  .conn-tag.selected{outline:3px solid #0078d7;outline-offset:2px}
+  .conn-tag.signal{background:var(--neon);color:#000;border-color:var(--neon);box-shadow:0 0 12px rgba(0,255,102,.45)}
+
+  /* Indicador Q */
+  .q-indicator{width:18px;height:18px;border-radius:50%;background:#444;margin-top:8px;pointer-events:none;border:2px solid #222}
+  .q-indicator.on{background:var(--neon);box-shadow:0 0 8px rgba(0,255,102,.45)}
+
+  #brand{position:fixed;right:12px;bottom:12px;background:rgba(0,0,0,.06);padding:8px 12px;border-radius:8px;font-weight:900;letter-spacing:1px;z-index:60;box-shadow:0 6px 0 rgba(0,0,0,.04)}
+
+  #installBtn{display:none;position:fixed;right:12px;bottom:80px;z-index:210;background:#003366;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:900;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.12)}
+
+  /* FAB y paleta móvil */
+  #fabPalette{position:fixed;left:12px;bottom:12px;z-index:210;background:#003366;color:#fff;border:none;padding:12px 14px;border-radius:999px;font-weight:900;cursor:pointer;box-shadow:0 6px 0 rgba(0,0,0,.12);display:none}
+  #paletteModal{position:fixed;inset:0;display:none;z-index:220;background:rgba(0,0,0,.35)}
+  #paletteSheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;padding:14px;border-top:3px solid #003366}
+  #paletteGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .pick{background:#fff8dc;border:2px solid #7a7a7a;border-radius:10px;padding:10px;font-weight:800;font-size:20px;text-align:center;cursor:pointer}
+
+  /* Menú contextual del cable */
+  #wireMenu{position:fixed;z-index:230;display:none;background:#fff;border:2px solid #00366; border-color:#003366;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.18);overflow:hidden}
+  #wireMenu button{display:block;width:100%;background:#fff;border:0;border-bottom:1px solid #e5e5e5;padding:10px 14px;font-weight:800;cursor:pointer;text-align:left}
+  #wireMenu button:last-child{border-bottom:0}
+  #wireMenu button:hover{background:#f5f9ff}
+
+  /* Modal temporizador */
+  #timerModal{position:fixed;inset:0;display:none;z-index:300;background:rgba(0,0,0,.4)}
+  #timerCard{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:12px;border:2px solid #003366;box-shadow:0 10px 24px rgba(0,0,0,.2);padding:14px;min-width:280px}
+  #timerCard h3{margin:0 0 8px;font-size:18px;color:#003366}
+  #timerCard label{display:block;font-weight:700;margin-bottom:6px}
+  #timerCard input{width:100%;padding:8px;border:2px solid #bbb;border-radius:8px;font-weight:700}
+  #timerActions{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
+  #timerActions button{padding:8px 10px;border-radius:8px;border:1px solid #777;background:#fff;font-weight:800;cursor:pointer}
+  #btnTimerSave{background:#003366;color:#fff;border-color:#003366}
+
+  @supports(padding:max(0px)){
+    #installBtn{bottom:calc(80px + env(safe-area-inset-bottom))}
+    #fabPalette{bottom:calc(12px + env(safe-area-inset-bottom))}
+  }
+  @media (max-width:720px){
+    #fabPalette{display:block}
+  }
+
+  /* Mejoras de pines: área táctil mayor e indicador de NOT en entradas */
+  .terminal { touch-action: manipulation; }
+  .terminal::after{ content:""; position:absolute; left:-6px; right:-6px; top:-6px; bottom:-6px; }
+  .terminal.input.not::after{ /* circulito de inversión al borde izquierdo */ 
+    content:""; position:absolute; left:-8px; top:50%; width:12px; height:12px; transform:translateY(-50%);
+    border-radius:50%; background:#fff; border:3px solid var(--pin);
+  }
+  .terminal.input.not::before{ background:var(--pin); box-shadow:0 0 0 2px rgba(0,0,0,.15) inset; }
+
+</style>
+<div id="uuidMachine">5bb0ff35-3abb-4766-8972-5bda4eb553b0</div>
+<style>
+  #delete-debug{position:fixed;right:10px;bottom:10px;background:#111;color:#fff;
+  font:12px/1.2 system-ui,Segoe UI,Roboto,Arial,sans-serif;border-radius:8px;
+  padding:8px 10px;opacity:.85;z-index:999999;display:none}
+  #delete-debug b{color:#93c5fd}
+</style>
+
+
+/* Simulate active visual */
+<style>
+  #simulate.active{
+    background:#16a34a !important;
+    color:#fff !important;
+    border-color:#0f7a36 !important;
+    box-shadow:0 0 0 2px rgba(22,163,74,.25) inset;
+  }
+</style>
+
+
+<style>
+/* === Indicador de inversión estilo NOT en ENTRADAS (Opción B) === */
+.terminal.input.not { width: var(--round-pin) !important; }
+.terminal.input.not::before {
+  content:""; position:absolute; width: var(--round-pin); height: var(--round-pin);
+  border-radius:50%; background:#000; top:50%; transform:translateY(-50%); left:auto; right:0;
+}
+.terminal.input.not::after { content:none !important; }
+/* Señal activa → neón + glow */
+.terminal.input.not.signal-on::before {
+  background: var(--neon);
+  filter: drop-shadow(0 0 8px rgba(0,255,102,.45));
+  border:none;
+}
+</style>
+
+
+    <style id="assistant-injected" media="all">
+    /* assistant-injected-pwa-and-ui */
+    /* Sidebar visible y scrolleable; grid de bloques */
+    #sidebar {
+      width: clamp(140px, 26vw, 220px);
+      overflow: auto;
+      display: grid;
+      grid-template-columns: 1fr;
+      align-content: start;
+      gap: 8px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* En horizontal, sidebar fijo abierto (si tu app usa clases, esto ayuda) */
+    @media (orientation: landscape) {
+      #sidebar { transform: none !important; }
+    }
+
+    /* Área de trabajo ajusta cuando sidebar está fijo */
+    #canvas {
+      outline: none;
+    }
+
+    /* Zonas táctiles de pines más grandes sin cambiar lo visual */
+    :root {
+      --pin-hit-h: 44px;
+      --pin-visible-h: 10px;
+      --pin-long: 40px;
+      --round-pin: 40px;
+    }
+
+    .terminal {
+      position: absolute;
+      touch-action: manipulation;
+    }
+    .terminal::after {
+      content: "";
+      position: absolute;
+      left: -10px; right: -10px; top: -10px; bottom: -10px; /* hitbox agrandado */
+    }
+
+    /* Botón de simular con estados (por si lo usas) */
+    .simulate-btn.is-on { filter: saturate(1.3); }
+    .simulate-btn.is-off { opacity: .7; }
+    </style>
+    
+<style id="assistant-toggle-sidebar">
+/* Toggle sidebar via .open incluso en landscape */
+#sidebar{ transition: transform .2s ease; }
+#sidebar:not(.open){ transform: translateX(-100%) !important; }
+</style>
+  <link rel="stylesheet" href="./assets/css/app.css">
+<style id="workarea-style">
+  :root{
+    --workarea-width: 10000px;
+    --workarea-height: 10000px;
+  }
+  #workspace{ position: relative; }
+  /* Contenedor de límites del área de trabajo */
+  #workareaBounds{ display:none;
+    position: absolute;
+    left: 0; top: 0;
+    width: var(--workarea-width);
+    height: var(--workarea-height);
+    
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 0; /* por debajo de nodos/cables */
+  }
+  /* Grid suave opcional dentro del límite (visual, no molesta) */
+  
+</style>
+<style id="immersive-style">
+  html, body { margin:0; padding:0; height:100%; }
+  body { background:#000; }
+  /* Full-viewport containers (fallbacks for different browsers) */
+  body, .app
+  .app, .viewport, #workspace {
+    width: 100%;
+    height: 100dvh;
+    min-height: 100svh;
+    min-height: 100vh; /* fallback */
+    overflow: hidden;
+  }
+  /* Disable text/image selection and long-press callouts */
+  * {
+    -webkit-user-select: none !important;
+    -moz-user-select: none !important;
+    -ms-user-select: none !important;
+    user-select: none !important;
+    -webkit-touch-callout: none !important;
+  }
+  a, img { -webkit-touch-callout: none !important; }
+  /* Remove blue tap highlight on Android */
+  * { -webkit-tap-highlight-color: transparent; }
+</style>
+<style id="infinite-canvas-style">
+  :root{
+    /* Arrancamos con un lienzo grande, pero crecerá solo */
+    --workarea-width: 10000px;
+    --workarea-height: 10000px;
+    /* Escala visual opcional de bloques (no rompe transforms de tu motor) */
+    --node-zoom: 0.90; /* ajusta 0.75–1.0 según prefieras */
+  }
+  #workspace{
+    position: relative;
+    /* Grid visual infinito (aunque el límite crezca) */
+    
+    
+    
+  }
+  /* Límite visible (se expandirá automáticamente) */
+  #workareaBounds{ display:none;
+    position: absolute;
+    left: 0; top: 0;
+    width: var(--workarea-width);
+    height: var(--workarea-height);
+    
+    box-sizing: border-box;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* Opcional: grid interior más suave dentro del límite */
+  
+  /* Downscale visual seguro de bloques: usa zoom (no pisa transform existente) */
+  .node, .block {
+    zoom: var(--node-zoom);
+  }
+</style>
+<style id="workspace-spec">
+  :root{
+    --workspace-size: 10000px; /* tamaño pedido */
+  }
+  /* Canvas ocupa toda la pantalla debajo del topbar */
+  #canvas{
+    flex: 1;
+    background: #fff;
+    position: absolute;
+    inset: 46px 0 0 0; /* altura del topbar (ajusta si tu topbar cambia) */
+    overflow: hidden;
+    touch-action: none;
+  }
+  /* Workspace es el plano: cuadrado grande escalable, sin límites visuales */
+  #workspace{
+    position: absolute;
+    top: 0; left: 0;
+    width: var(--workspace-size);
+    height: var(--workspace-size);
+    transform-origin: 0 0;
+    background: transparent;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Topbar -->
+  <div id="topbar">
+    <button id="burger">☰</button>
+    <button id="btnSave">Guardar</button>
+    <button id="btnLoad">Importar</button>
+    <button id="btnNew">Nuevo</button>
+<input id="loadInput" type="file" accept="application/json" style="display:none">
+    <div id="spacer"></div>
+    <button id="simulate">Simular</button>
+    <button id="stop">Detener</button>
+    <button id="deleteBtn">Eliminar</button>
+    <button id="zoomOut" title="Alejar">−</button>
+    <button id="zoomIn" title="Acercar">＋</button>
+      <button id="btnEdit">Editar</button>
+  </div>
+
+  <!-- Biblioteca (oculta por defecto, se abre con ☰) -->
+  <div id="sidebar">
+    <div style="font-weight:900">LOGICSOFT — Componentes</div>
+    <div class="component" draggable="true" data-type="input">Entrada (I)</div>
+    <div class="component" draggable="true" data-type="output">Salida (Q)</div>
+    <div class="component" draggable="true" data-type="M">Memoria (M)</div>
+    <div style="height:4px"></div>
+    <div class="component" draggable="true" data-type="and">AND</div>
+    <div class="component" draggable="true" data-type="or">OR</div>
+    <div class="component" draggable="true" data-type="not">NOT</div>
+    <div class="component" draggable="true" data-type="nand">NAND</div>
+    <div class="component" draggable="true" data-type="nor">NOR</div>
+    <div class="component" draggable="true" data-type="xor">XOR</div>
+    <div class="component" draggable="true" data-type="xnor">XNOR</div>
+    <div style="height:4px"></div>
+    <div class="component" draggable="true" data-type="sr">SR (Set/Reset)</div>
+    <div style="height:4px"></div>
+    <div class="component" draggable="true" data-type="ton">TON</div>
+    <div class="component" draggable="true" data-type="toff">TOFF</div>
+    <div style="flex:1"></div>
+    <div style="font-size:11px;color:#333">Arrastra un bloque al área.</div>
+  </div>
+
+  <!-- Lienzo -->
+  <div id="canvas">
+    <div id="workspace">
+<svg id="wires" xmlns="http://www.w3.org/2000/svg" width="5000" height="5000" viewBox="0 0 5000 5000" preserveAspectRatio="none"></svg>
+    </div>
+  </div>
+
+  <div id="brand">LOGICSOFT</div>
+  <button id="installBtn">Instalar LOGICSOFT</button>
+  <button id="fabPalette">🧩 Bloques</button>
+
+  <!-- Paleta móvil -->
+  <div id="paletteModal" aria-hidden="true">
+    <div id="paletteSheet">
+      <div style="font-weight:900;margin-bottom:10px;color:#003366">Elige un bloque</div>
+      <div id="paletteGrid"></div>
+      <div style="margin-top:10px;display:flex;justify-content:center">
+        <button id="closePalette" style="padding:8px 12px;border-radius:8px;border:1px solid #777;background:#fff;font-weight:700">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menú contextual del cable -->
+  <div id="wireMenu">
+    <button id="menuAddNode">➕ Crear nodo para acomodar</button>
+    <button id="menuMakeLabel">🏷️ Crear etiqueta y eliminar cable</button>
+  </div>
+
+  <!-- Modal de configuración de temporizadores -->
+  <div id="timerModal">
+    <div id="timerCard">
+      <h3 id="timerTitle">Configurar temporizador</h3>
+      <label for="timerSec">Tiempo (s)</label>
+      <input id="timerSec" type="number" min="0" step="0.1" value="1">
+      <div id="timerActions">
+        <button id="btnTimerCancel">Cancelar</button>
+        <button id="btnTimerSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ===== PWA básico ===== */
+let deferredPrompt=null;
+const installBtn=document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt',(e)=>{ e.preventDefault(); deferredPrompt=e; installBtn.style.display='block'; });
+installBtn.addEventListener('click', async()=>{ if(!deferredPrompt) return; deferredPrompt.prompt(); await deferredPrompt.userChoice; installBtn.style.display='none'; deferredPrompt=null; });
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('./service-worker.js').catch(console.error); }); }
+
+/* ===== SIMUPASIR ===== */
+const burger = document.getElementById('burger');
+const sidebar = document.getElementById('sidebar');
+burger.setAttribute('aria-controls', 'sidebar');
+burger.setAttribute('aria-expanded', String(sidebar.classList.contains('open')));
+burger.addEventListener('click', ()=>{
+  const isOpen = sidebar.classList.toggle('open');
+  burger.setAttribute('aria-expanded', String(isOpen));
+});
+const canvas = document.getElementById("canvas");
+const workspace = document.getElementById("workspace");
+const wiresSVG = document.getElementById("wires");
+function disableWireHits() {
+  try {
+    if (wiresSVG) wiresSVG.style.pointerEvents = 'none';
+    document.querySelectorAll('.conn-tag,.bend-hit,.hub-hit,.wire-hit').forEach(el => el.style.pointerEvents = 'none');
+  } catch(e) {}
+}
+function enableWireHits() {
+  try {
+    if (wiresSVG) wiresSVG.style.pointerEvents = 'auto';
+    document.querySelectorAll('.conn-tag,.bend-hit,.hub-hit,.wire-hit').forEach(el => el.style.pointerEvents = 'auto');
+  } catch(e) {}
+}
+
+const components = document.querySelectorAll(".component");
+const btnSave = document.getElementById('btnSave');
+const btnLoad = document.getElementById('btnLoad');
+const loadInput = document.getElementById('loadInput');
+const deleteBtn = document.getElementById('deleteBtn');
+
+let nodes=[], connections=[], pendingOutput=null, pendingGhost=null;
+let simulation=false;
+let inputCount=0, outputCount=0, memoryCount=0;
+let blockCodeCount=0;  // B001, B002, ...
+let scale=1, panX=0, panY=0, isPanning=false, panStartX=0, panStartY=0;
+let simTimer=null, SCAN_MS=60;
+let selectedNode=null, selectedConn=null;
+let selectedTag=null;
+let selectedBranch=null; // para ramas de etiquetas
+let draggingBend=null;
+let longPressTimer=null;
+let currentToPlace=null;
+let selectedPinEl=null;
+
+/* Hubs (juntas) por pin de salida */
+const outputHubs = new WeakMap(); // pinEl -> { x,y, dot, hit, stemPath, branches:Set }
+
+/* ==== Temporizador Modal (segundos) ==== */
+const timerModal = document.getElementById('timerModal');
+const timerTitle = document.getElementById('timerTitle');
+const timerSecInput = document.getElementById('timerSec');
+const btnTimerCancel = document.getElementById('btnTimerCancel');
+const btnTimerSave = document.getElementById('btnTimerSave');
+let timerNode=null;
+
+function openTimerModal(node){
+  timerNode = node;
+  const kind = node.type.toUpperCase();
+  const code = node.code || node.name;
+  timerTitle.textContent = `Configurar ${kind} (${code})`;
+  const sec = Math.max(0, Math.round(((node.delayMs ?? 1000)/1000)*10)/10);
+  timerSecInput.value = sec;
+  timerModal.style.display='block';
+}
+function closeTimerModal(){
+  timerModal.style.display='none';
+  timerNode=null;
+}
+btnTimerCancel.addEventListener('click', closeTimerModal);
+btnTimerSave.addEventListener('click', ()=>{
+  if(!timerNode) return;
+  let sec = parseFloat(timerSecInput.value);
+  if(isNaN(sec)||sec<0) sec=0;
+  timerNode.delayMs = Math.round(sec*1000);
+  // reset de estado interno del temporizador
+  timerNode.timerStart=null;
+  timerNode.seenHigh=false;   // para TOFF
+  timerNode.prevIn=0;
+  closeTimerModal();
+});
+timerModal.addEventListener('click',(e)=>{ if(e.target===timerModal) closeTimerModal(); });
+
+/* ===== Util ===== */
+function zpad(n,len=3){ return String(n).padStart(len,'0'); }
+function logoLabelForType(type){
+  switch(type){
+    case 'and':  return '&';
+    case 'nand': return '&';
+    case 'or':   return '≥1';
+    case 'nor':  return '≥1';
+    case 'not':  return '1';
+    case 'xor':  return '=1';
+    case 'xnor': return '≠1';
+    case 'sr':   return 'S/R';
+    case 'M':    return 'M';
+    case 'ton':  return 'TON';
+    case 'toff': return 'TOFF';
+    default:     return (type||'').toUpperCase();
+  }
+}
+function clientToWorkspace(clientX, clientY){
+  const rect = canvas.getBoundingClientRect();
+  return { x:(clientX-rect.left-panX)/scale, y:(clientY-rect.top-panY)/scale };
+}
+function terminalEdge(term){
+  const rect = term.getBoundingClientRect();
+  const wsRect = workspace.getBoundingClientRect();
+  const isInput=term.classList.contains('input');
+  const isOutput=term.classList.contains('output');
+  const xScreen = isInput ? rect.left : (isOutput ? rect.right : rect.left + rect.width/2);
+  const yScreen = rect.top + rect.height/2;
+  return { x:(xScreen-wsRect.left)/scale, y:(yScreen-wsRect.top)/scale };
+}
+
+/* Zoom & Pan */
+canvas.addEventListener("wheel", e=>{ e.preventDefault(); setZoom(scale + (e.deltaY>0?-0.08:0.08)); });
+function setZoom(next){
+  const rect = canvas.getBoundingClientRect();
+  const cx = rect.left+rect.width/2, cy = rect.top+rect.height/2;
+  const fx=(cx-rect.left-panX)/scale, fy=(cy-rect.top-panY)/scale;
+  const newScale = Math.max(.25, Math.min(3,next));
+  panX = cx-rect.left - fx*newScale; panY = cy-rect.top - fy*newScale; scale=newScale;
+  updateTransform(); updateConnections();
+}
+function updateTransform(){ workspace.style.transform=`translate(${panX}px,${panY}px) scale(${scale})`; }
+workspace.addEventListener("mousedown", e=>{
+  if(e.target===workspace){
+    if(e.button===0) clearSelection();
+    isPanning=true; panStartX=e.clientX-panX; panStartY=e.clientY-panY; disableWireHits(); document.addEventListener("mousemove",doPan); document.addEventListener("mouseup",endPan);
+  }
+});
+function doPan(e){ if(!isPanning) return; panX=e.clientX-panStartX; panY=e.clientY-panStartY; updateTransform(); updateConnections(); }
+function endPan(){ isPanning=false; enableWireHits(); document.removeEventListener("mousemove",doPan); document.removeEventListener("mouseup",endPan); }
+
+/* Touch pan/pinch */
+let touchPan={active:false,id:null,startClientX:0,startClientY:0,startPanX:0,startPanY:0};
+let pinch={active:false,startDist:0,startScale:1,cx:0,cy:0};
+workspace.addEventListener('touchstart', e=>{
+  if(e.touches.length===1 && !pinch.active){
+    const t=e.touches[0];
+    const target=document.elementFromPoint(t.clientX,t.clientY);
+    if(target===workspace || target===wiresSVG){
+      touchPan={active:true,id:t.identifier,startClientX:t.clientX,startClientY:t.clientY,startPanX:panX,startPanY:panY};
+      disableWireHits(); clearSelection(); e.preventDefault();
+    }
+  } else if(e.touches.length===2){
+    pinch.active=true;
+    const dx=e.touches[1].clientX-e.touches[0].clientX;
+    const dy=e.touches[1].clientY-e.touches[0].clientY;
+    pinch.startDist=Math.hypot(dx,dy); pinch.startScale=scale;
+    pinch.cx=(e.touches[0].clientX+e.touches[1].clientX)/2;
+    pinch.cy=(e.touches[0].clientY+e.touches[1].clientY)/2;
+    touchPan.active=false; e.preventDefault();
+  }
+},{passive:false});
+workspace.addEventListener('touchmove', e=>{
+  if(pinch.active && e.touches.length>=2){
+    const dx=e.touches[1].clientX-e.touches[0].clientX, dy=e.touches[1].clientY-e.touches[0].clientY;
+    const dist=Math.hypot(dx,dy); let newScale=pinch.startScale*dist/pinch.startDist; newScale=Math.max(.25,Math.min(3,newScale));
+    const rect=canvas.getBoundingClientRect();
+    const fx=(pinch.cx-rect.left-panX)/scale, fy=(pinch.cy-rect.top-panY)/scale;
+    panX=pinch.cx-rect.left-fx*newScale; panY=pinch.cy-rect.top-fy*newScale; scale=newScale;
+    updateTransform(); updateConnections(); e.preventDefault(); return;
+  }
+  if(!touchPan.active) return;
+  for(const t of e.touches){
+    if(t.identifier===touchPan.id){
+      panX=touchPan.startPanX+(t.clientX-touchPan.startClientX);
+      panY=touchPan.startPanY+(t.clientY-touchPan.startClientY);
+      updateTransform(); updateConnections(); e.preventDefault(); return;
+    }
+  }
+},{passive:false});
+workspace.addEventListener('touchend', e=>{
+  if(pinch.active && e.touches.length<2) pinch.active=false;
+  if(!touchPan.active) return;
+  let still=false; for(const t of e.touches){ if(t.identifier===touchPan.id) still=true; }
+  if(!still) touchPan.active=false; enableWireHits();
+});
+
+/* DnD + selección paleta */
+components.forEach(comp=>{
+  comp.addEventListener("dragstart", e=>{
+    e.dataTransfer.setData("application/x-simupasir", comp.dataset.type);
+    e.dataTransfer.setData("text/plain", comp.dataset.type);
+    e.dataTransfer.effectAllowed='copy';
+  });
+  comp.addEventListener("click", ()=>{ currentToPlace = comp.dataset.type; components.forEach(c=>c.classList.remove('selected')); comp.classList.add('selected'); });
+});
+canvas.addEventListener("dragover", e=>{ e.preventDefault(); e.dataTransfer.dropEffect='copy'; });
+canvas.addEventListener("drop", e=>{
+  e.preventDefault(); if(simulation) return;
+  const type=e.dataTransfer.getData("application/x-simupasir")||e.dataTransfer.getData("text/plain");
+  if(!type) return; const pos=clientToWorkspace(e.clientX,e.clientY); createNode(type,pos.x,pos.y);
+});
+
+/* Paleta móvil */
+const fab = document.getElementById('fabPalette');
+const modal = document.getElementById('paletteModal');
+const grid = document.getElementById('paletteGrid');
+const closePalette = document.getElementById('closePalette');
+const PALETTE_TYPES = ['input','output','M','and','or','not','nand','nor','xor','xnor','sr','ton','toff'];
+function openPalette(){
+  grid.innerHTML='';
+  PALETTE_TYPES.forEach(t=>{
+    const b=document.createElement('button');
+    b.className='pick'; b.textContent=t.toUpperCase();
+    b.onclick=()=>{ currentToPlace=t; closePaletteModal(); };
+    grid.appendChild(b);
+  });
+  modal.style.display='block'; modal.setAttribute('aria-hidden','false');
+}
+function closePaletteModal(){ modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }
+fab.addEventListener('click', openPalette);
+closePalette.addEventListener('click', closePaletteModal);
+modal.addEventListener('click', (e)=>{ if(e.target===modal) closePaletteModal(); });
+
+/* Tap para colocar o deseleccionar */
+canvas.addEventListener('click', e=>{
+  if(e.target===workspace || e.target===wiresSVG){
+    if(currentToPlace){
+      const pos=clientToWorkspace(e.clientX,e.clientY); createNode(currentToPlace,pos.x,pos.y);
+    }else{
+      clearSelection();
+    }
+  }
+});
+
+/* Selección general */
+function selectNode(node){ if(simulation) return; clearSelection(); selectedNode=node; window.selectedNode=node; window.selectedNode=node; window.selectedNode=node; node.el.classList.add('selected'); }
+function selectConnection(conn){ if(simulation) return; clearSelection(); selectedConn=conn; conn.selected=true; conn.path?.classList.add('selected'); renderConnection(conn); }
+function selectTag(tag){ if(selectedTag===tag) return; selectedTag?.classList.remove('selected'); selectedTag=tag; tag.classList.add('selected'); if(selectedConn){ selectedConn.path?.classList.remove('selected'); selectedConn.selected=false; selectedConn=null; } }
+function clearSelection(){
+  if(selectedNode){ selectedNode.el.classList.remove('selected'); selectedNode=null; window.selectedNode=null; }
+
+function deleteSelected(){
+  if(simulation) return;
+  // Prioridad: nodo seleccionado > conexión seleccionada > rama/etiqueta seleccionada
+  if(selectedNode){
+    removeNode(selectedNode);
+    return;
+  }
+  if(selectedConn){
+    removeConnection(selectedConn);
+    return;
+  }
+  if(selectedBranch){
+    const connByBranch = connections.find(c => c.srcBranch === selectedBranch || c.dstBranch === selectedBranch);
+    if(connByBranch){
+      removeConnection(connByBranch);
+      return;
+    }
+  }
+  if(selectedTag){
+    const connByTag = connections.find(c => (c.srcBranch && c.srcBranch.tagEl === selectedTag) || (c.dstBranch && c.dstBranch.tagEl === selectedTag));
+    if(connByTag){
+      removeConnection(connByTag);
+      return;
+    }
+  }
+  // nada seleccionado: no hacemos nada, pero limpiamos estados fantasma por si acaso
+  removeGhost();
+}
+
+  if(selectedConn){ selectedConn.path?.classList.remove('selected'); selectedConn.selected=false; selectedConn=null; }
+  if(selectedTag){ selectedTag.classList.remove('selected'); selectedTag=null; }
+  if(selectedBranch){ selectedBranch=null; }
+  if(selectedPinEl){ selectedPinEl.classList.remove('pin-selected'); selectedPinEl=null; }
+  pendingOutput=null; removeGhost(); hideWireMenu();
+  if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer=null; }
+  connections.forEach(c=>{ (c.handles||[]).forEach(h=>h.remove()); c.handles=[]; });
+}
+
+/* Crear bloque */
+let nextNodeId=1;
+function createNode(type,x,y){
+  const div=document.createElement('div'); div.className='node'; div.style.left=x+'px'; div.style.top=y+'px';
+
+  let display = logoLabelForType(type);
+  if(type==='input')  display = `I${++inputCount}`;
+  else if(type==='output') display = `Q${++outputCount}`;
+  else if(type==='M')      display = `M${++memoryCount}`;
+
+  /* Badge B001... (no para I/Q/M) */
+  let blockCode=null;
+  if(type!=='input' && type!=='output' && type!=='M'){
+    blockCode = 'B'+zpad(++blockCodeCount);
+    const badge=document.createElement('div'); badge.className='badge'; badge.textContent=blockCode; div.appendChild(badge);
+  }
+
+  const lbl=document.createElement('div'); lbl.className='label'; lbl.textContent=display; div.appendChild(lbl);
+  const qind=document.createElement('div'); qind.className='q-indicator off'; div.appendChild(qind);
+
+  const output=document.createElement('div'); output.className='terminal output';
+  if(type==='not' || type==='nand' || type==='nor'){ output.classList.add('out-round'); }
+  div.appendChild(output);
+
+  const inputs=[];
+  if(type==='input'){ div.style.background='#ffe4b5'; }
+  else if(type==='output'||type==='M' || type==='ton' || type==='toff'){
+    const inp=document.createElement('div'); inp.className='terminal input'; inp.style.top='50%'; div.appendChild(inp); inputs.push(inp);
+  } else if(type==='not'){
+    const inp=document.createElement('div'); inp.className='terminal input'; inp.style.top='50%'; div.appendChild(inp); inputs.push(inp);
+  } else if(type==='sr'){
+    const inS=document.createElement('div'); inS.className='terminal input'; inS.style.top='28%';
+    const labelS=document.createElement('div'); labelS.className='term-label'; labelS.style.top='24%'; labelS.textContent='S';
+    const inR=document.createElement('div'); inR.className='terminal input'; inR.style.top='72%';
+    const labelR=document.createElement('div'); labelR.className='term-label'; labelR.style.top='68%'; labelR.textContent='R';
+    div.appendChild(inS); div.appendChild(labelS); div.appendChild(inR); div.appendChild(labelR);
+    inputs.push(inS); inputs.push(inR);
+  }else{
+    const nInputs=4;
+    for(let i=0;i<nInputs;i++){
+      const inp=document.createElement('div'); inp.className='terminal input';
+      inp.style.top = `${(i+1)*100/(nInputs+1)}%`;
+      div.appendChild(inp); inputs.push(inp);
+    }
+  }
+
+  workspace.appendChild(div);
+
+  const node={ id:nextNodeId++, el:div, type, name:display, code:blockCode, inputs, output, value:0, nextValue:0, qIndicator:qind, invalid:false };
+
+  /* Estado extra para temporizadores */
+  if(type==='ton' || type==='toff'){
+    node.delayMs = 1000;     // por defecto 1s
+    node.timerStart = null;  // instante de inicio del conteo
+    node.prevIn = 0;         // último valor de entrada
+  }
+  if(type==='toff'){
+    node.seenHigh = false;   // aún no fue energizado
+  }
+
+  // Doble clic/tap para configurar temporizador (no borra el bloque)
+  if(type==='ton' || type==='toff'){
+    div.addEventListener('dblclick', (e)=>{ e.stopPropagation(); openTimerModal(node); });
+    let lastTap=0;
+    div.addEventListener('touchend', (e)=>{
+      const now=e.timeStamp || Date.now();
+      if(now - lastTap < 350){ openTimerModal(node); }
+      lastTap=now;
+    });
+  }
+
+  if(type==='sr') node.q=0;
+  nodes.push(node);
+
+  if(node.output){ node.output.style.top='50%'; node.output.style.transform='translateY(-50%)'; }
+
+  div.addEventListener('click', e=>{ if(e.target.classList.contains('terminal')) return; if(simulation) return; selectNode(node); });
+  if(type==='input'){
+    div.addEventListener('click', e=>{ if(e.target.classList.contains('terminal')) return; if(!simulation) return; div.classList.toggle('active'); scanLogic(); });
+  }
+
+  dragMove(div,node);
+  enableConnections(node);
+  div.addEventListener('contextmenu', e=>{ e.preventDefault(); if(!simulation) removeNode(node); });
+
+  updateConnections();
+}
+
+/* Mover bloque (cuando está seleccionado) */
+function dragMove(el,node){
+  let sx,sy,ix,iy,dragging=false;
+  el.addEventListener('mousedown', e=>{
+    if(e.target.classList.contains('terminal')) return;
+    if(simulation) return;
+    if(selectedNode!==node) return;
+    e.preventDefault(); sx=e.clientX; sy=e.clientY; ix=parseFloat(el.style.left); iy=parseFloat(el.style.top);
+    dragging=true; document.addEventListener('mousemove',onMove); document.addEventListener('mouseup',onUp);
+  });
+  function onMove(e){ if(!dragging) return; el.style.left=ix+(e.clientX-sx)/scale+'px'; el.style.top=iy+(e.clientY-sy)/scale+'px'; updateConnections(); }
+  function onUp(){ dragging=false; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); }
+  el.addEventListener('touchstart', e=>{
+    if(simulation) return; if(selectedNode!==node) return;
+    const t=e.changedTouches[0]; sx=t.clientX; sy=t.clientY; ix=parseFloat(el.style.left); iy=parseFloat(el.style.top);
+    dragging=true; document.addEventListener('touchmove',onTouchMove,{passive:false}); document.addEventListener('touchend',onTouchEnd);
+    e.stopPropagation(); e.preventDefault();
+  },{passive:false});
+  function onTouchMove(e){ if(!dragging) return; const t=e.changedTouches[0]; el.style.left=ix+(t.clientX-sx)/scale+'px'; el.style.top=iy+(t.clientY-sy)/scale+'px'; updateConnections(); e.preventDefault(); }
+  function onTouchEnd(){ dragging=false; document.removeEventListener('touchmove',onTouchMove); document.removeEventListener('touchend',onTouchEnd); }
+}
+
+
+/* === NOT por pin de entrada === */
+function toggleNotOnInput(inp){
+  inp.classList.toggle('not');
+  inp.dataset.not = inp.classList.contains('not') ? '1' : '0';
+  updateConnections();
+}
+
+/* Conexiones y pines */
+function enableConnections(node){
+  const handler = el=>{
+    if(simulation) return;
+    if(el.classList.contains('output')){
+      selectedPinEl?.classList.remove('pin-selected');
+      selectedPinEl=el; el.classList.add('pin-selected');
+      pendingOutput=el; showGhost(el); return;
+    }
+    if(el.classList.contains('input')){
+      el.classList.add('pin-target'); setTimeout(()=>el.classList.remove('pin-target'),300);
+      if(!pendingOutput) return;
+      if(pendingOutput===el){ removeGhost(); selectedPinEl?.classList.remove('pin-selected'); selectedPinEl=null; pendingOutput=null; return; }
+      createConnection(pendingOutput, el);
+      removeGhost(); selectedPinEl?.classList.remove('pin-selected'); selectedPinEl=null; pendingOutput=null;
+    }
+  };
+  node.output && node.output.addEventListener('click', ()=>handler(node.output));
+  node.inputs.forEach(inp=>{
+    inp.addEventListener('click', ()=>handler(inp));
+    // Doble clic / doble tap para invertir (NOT) este pin de entrada
+    inp.addEventListener('dblclick', (e)=>{ e.stopPropagation(); toggleNotOnInput(inp); });
+    let __lastTap=0; inp.addEventListener('touchend',(e)=>{ const now=e.timeStamp||Date.now(); if(now-__lastTap<350){ toggleNotOnInput(inp); } __lastTap=now; }, {passive:true});
+  });
+}
+
+/* Ghost al crear conexión */
+function showGhost(fromTerm){ if (isPanning) return;
+  removeGhost();
+  const s=terminalEdge(fromTerm);
+  const path=document.createElementNS("http://www.w3.org/2000/svg","path");
+  path.setAttribute("class","wire-path ghost"); updateGhostPath(path,s.x,s.y,s.x,s.y);
+  wiresSVG.appendChild(path); pendingGhost=path;
+  workspace.addEventListener('mousemove',trackGhost);
+  workspace.addEventListener('touchmove',trackGhostTouch,{passive:false});
+}
+function removeGhost(){
+  pendingGhost?.remove(); pendingGhost=null;
+  workspace.removeEventListener('mousemove',trackGhost);
+  workspace.removeEventListener('touchmove',trackGhostTouch);
+}
+function trackGhost(e){ if(!pendingGhost||!pendingOutput||isPanning) return; const p=clientToWorkspace(e.clientX,e.clientY); const s=terminalEdge(pendingOutput); updateGhostPath(pendingGhost,s.x,s.y,p.x,p.y); }
+function trackGhostTouch(e){ if(!pendingGhost||!pendingOutput||isPanning) return; const t=e.touches[0]; const p=clientToWorkspace(t.clientX,t.clientY); const s=terminalEdge(pendingOutput); updateGhostPath(pendingGhost,s.x,s.y,p.x,p.y); e.preventDefault(); }
+function updateGhostPath(path,sx,sy,ex,ey){ const midX=(sx+ex)/2; path.setAttribute('d',`M${sx},${sy} L${midX},${sy} L${midX},${ey} L${ex},${ey}`); }
+
+/* ===== Etiquetas & hubs ===== */
+function getSourceName(conn){
+  const srcNode = nodes.find(n=>n.output===conn.from);
+  if(!srcNode) return '??';
+  if(srcNode.type==='input'||srcNode.type==='output'||srcNode.type==='M') return srcNode.name;
+  return srcNode.code || 'B???';
+}
+function getDestNameWithPin(conn){
+  const dstNode = nodes.find(n=>n.inputs.includes(conn.to));
+  if(!dstNode) return '??';
+  const pinIndex = 1 + dstNode.inputs.indexOf(conn.to);
+  if(dstNode.type==='input'||dstNode.type==='output'||dstNode.type==='M') return `${dstNode.name}/${pinIndex}`;
+  return `${dstNode.code || 'B???'}/${pinIndex}`;
+}
+function ensureHub(pinEl){
+  let hub = outputHubs.get(pinEl);
+  if(hub) return hub;
+  const p = terminalEdge(pinEl);
+  const x = p.x + 18, y = p.y;
+  const dot = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  dot.setAttribute('cx', x); dot.setAttribute('cy', y); dot.setAttribute('r', 6);
+  dot.setAttribute('class','hub-dot');
+  const hit = document.createElementNS("http://www.w3.org/2000/svg","circle");
+  hit.setAttribute('cx', x); hit.setAttribute('cy', y); hit.setAttribute('r', 18);
+  hit.setAttribute('class','hub-hit');
+  const stem = document.createElementNS("http://www.w3.org/2000/svg","path");
+  stem.setAttribute('class','wire-path');
+  wiresSVG.appendChild(stem); wiresSVG.appendChild(hit); wiresSVG.appendChild(dot);
+  const hubObj = { x, y, dot, hit, stemPath:stem, pin:pinEl, branches:new Set() };
+  outputHubs.set(pinEl, hubObj);
+
+  const startDrag = (ev)=>{
+    ev.stopPropagation();
+    const start = (ev.touches? ev.touches[0]:ev);
+    const s = clientToWorkspace(start.clientX, start.clientY);
+    const ox = hubObj.x, oy = hubObj.y;
+    const move = (ev2)=>{
+      const cur = (ev2.touches? ev2.touches[0]:ev2);
+      const wp = clientToWorkspace(cur.clientX, cur.clientY);
+      hubObj.x = ox + (wp.x - s.x);
+      hubObj.y = oy + (wp.y - s.y);
+      renderHub(hubObj);
+    };
+    const end = ()=>{
+      document.removeEventListener('mousemove',move);
+      document.removeEventListener('mouseup',end);
+      document.removeEventListener('touchmove',move);
+      document.removeEventListener('touchend',end);
+    };
+    document.addEventListener('mousemove',move);
+    document.addEventListener('mouseup',end);
+    document.addEventListener('touchmove',move,{passive:false});
+    document.addEventListener('touchend',end,{passive:true});
+  };
+  dot.addEventListener('mousedown',startDrag);
+  dot.addEventListener('touchstart',startDrag,{passive:false});
+  hit.addEventListener('mousedown',startDrag);
+  hit.addEventListener('touchstart',startDrag,{passive:false});
+
+  renderHub(hubObj);
+  return hubObj;
+}
+function renderHub(hub){
+  hub.dot.setAttribute('cx', hub.x); hub.dot.setAttribute('cy', hub.y);
+  hub.hit.setAttribute('cx', hub.x); hub.hit.setAttribute('cy', hub.y);
+  const e = terminalEdge(hub.pin);
+  const d = `M${e.x},${e.y} L${hub.x-10},${e.y} L${hub.x-10},${hub.y} L${hub.x},${hub.y}`;
+  hub.stemPath.setAttribute('d', d);
+  for (const br of hub.branches) renderBranch(br);
+}
+function createTagEl(text, isSource){
+  const tag = document.createElement('div');
+  tag.className = 'conn-tag' + (isSource ? ' conn-tag-src' : '');
+  tag.textContent = text;
+  workspace.appendChild(tag);
+  return tag;
+}
+function attachDragToTag(branch){
+  const tag = branch.tagEl;
+  let dragging=false, sx=0, sy=0, ox=0, oy=0;
+  const start=(ev)=>{
+    ev.stopPropagation();
+    dragging=true;
+    const pt=(ev.touches? ev.touches[0]:ev);
+    const wp=clientToWorkspace(pt.clientX, pt.clientY);
+    sx=wp.x; sy=wp.y; ox=branch.tx; oy=branch.ty;
+    document.addEventListener('mousemove',move);
+    document.addEventListener('mouseup',end);
+    document.addEventListener('touchmove',move,{passive:false});
+    document.addEventListener('touchend',end,{passive:true});
+  };
+  const move=(ev)=>{
+    if(!dragging) return;
+    const pt=(ev.touches? ev.touches[0]:ev);
+    const wp=clientToWorkspace(pt.clientX, pt.clientY);
+    branch.tx = ox + (wp.x - sx);
+    branch.ty = oy + (wp.y - sy);
+    renderBranch(branch);
+    ev.preventDefault?.();
+  };
+  const end=()=>{
+    dragging=false;
+    document.removeEventListener('mousemove',move);
+    document.removeEventListener('mouseup',end);
+    document.removeEventListener('touchmove',move);
+    document.removeEventListener('touchend',end);
+  };
+  tag.addEventListener('mousedown', start);
+  tag.addEventListener('touchstart', start, {passive:false});
+  tag.addEventListener('click', (e)=>{ e.stopPropagation(); selectTag(tag); });
+}
+function createBranch({fromHub, hub, fromPin, pinEl, text}){
+  const path = document.createElementNS("http://www.w3.org/2000/svg","path");
+  path.setAttribute('class','wire-path');
+  const hit  = document.createElementNS("http://www.w3.org/2000/svg","path");
+  hit.setAttribute('class','wire-hit');
+  wiresSVG.appendChild(hit); wiresSVG.appendChild(path);
+  const tag = createTagEl(text, !!fromHub);
+  let start;
+  if(fromHub) start = {x:hub.x, y:hub.y};
+  else { const e=terminalEdge(pinEl); start = {x:e.x-40, y:e.y}; }
+  const branch = { fromHub, hub, fromPin, pinEl, path, hit, tagEl:tag, bends:[], tx: start.x + (fromHub? 60 : -60), ty: start.y - 20 };
+  const onLP = (ev)=>{
+    ev.stopPropagation();
+    let cancelled=false;
+    const cancel=()=>{ cancelled=true; if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer=null; } document.removeEventListener('mouseup',cancel); document.removeEventListener('touchend',cancel); };
+    document.addEventListener('mouseup',cancel,{once:true});
+    document.addEventListener('touchend',cancel,{once:true,passive:true});
+    longPressTimer=setTimeout(()=>{
+      if(cancelled) return;
+      const pt=(ev.type==='mousedown')?ev:(ev.touches?.[0] ?? ev);
+      const wp=clientToWorkspace(pt.clientX, pt.clientY);
+      branch.bends.push({x:wp.x, y:wp.y});
+      renderBranch(branch);
+    },400);
+  };
+  path.addEventListener('mousedown', onLP);
+  path.addEventListener('touchstart', onLP, {passive:false});
+  hit .addEventListener('mousedown', onLP);
+  hit .addEventListener('touchstart', onLP, {passive:false});
+  attachDragToTag(branch);
+  renderBranch(branch);
+  const onSel=(e)=>{ e.stopPropagation(); selectedBranch=branch; selectTag(tag); };
+  hit.addEventListener('click', onSel);
+  hit.addEventListener('touchstart', onSel, {passive:true});
+  return branch;
+}
+function renderBranch(branch){
+  const sx = branch.fromHub ? branch.hub.x : terminalEdge(branch.pinEl).x;
+  const sy = branch.fromHub ? branch.hub.y : terminalEdge(branch.pinEl).y;
+  const ex = branch.tx, ey = branch.ty;
+  let d='';
+  if(branch.bends.length===0){
+    const midX=(sx+ex)/2; d=`M${sx},${sy} L${midX},${sy} L${midX},${ey} L${ex},${ey}`;
+  }else{
+    const pts=[{x:sx,y:sy}].concat(branch.bends).concat([{x:ex,y:ey}]);
+    d=`M${pts[0].x},${pts[0].y} `; for(let i=1;i<pts.length;i++){ const prev=pts[i-1], next=pts[i]; d+=`L${next.x},${prev.y} L${next.x},${next.y} `; }
+  }
+  branch.path.setAttribute('d', d);
+  branch.hit.setAttribute('d', d);
+  branch.tagEl.style.left = ex + 'px';
+  branch.tagEl.style.top  = ey + 'px';
+}
+function convertWireToLabel(conn){
+  // Eliminar el cable original y sus handles
+  if (conn.path) { conn.path.remove(); conn.path = null; }
+  if (conn.hit)  { conn.hit.remove();  conn.hit  = null; }
+  (conn.handles || []).forEach(h => h.remove());
+  conn.handles = [];
+
+  // Nombres para las etiquetas
+  const srcName = getDestNameWithPin(conn);
+  const inName  = getSourceName(conn);
+
+  // ✨ Cambio clave:
+  // NO creamos hub en el pin de salida (evita el nodo que aparecía).
+  // En su lugar, ambas ramas salen directamente de sus pines.
+  const srcBranch = createBranch({ fromHub:false, pinEl: conn.from, text: srcName });
+  conn.srcBranch = srcBranch;
+
+  const dstBranch = createBranch({ fromHub:false, pinEl: conn.to,   text: inName  });
+  conn.dstBranch = dstBranch;
+
+  conn.mode = 'label';
+  renderConnection(conn);
+}
+/* Crear conexión normal */
+function createConnection(fromTerm,toTerm){
+  if(simulation) return;
+  if(connections.find(c => c.from===fromTerm && c.to===toTerm)) return;
+  const conn={ from:fromTerm, to:toTerm, path:null, hit:null, bends:[], handles:[], selected:false, mode:'wire', srcBranch:null, dstBranch:null };
+  connections.push(conn); renderConnection(conn);
+}
+
+/* Menú contextual cables */
+const wireMenu = document.getElementById('wireMenu');
+const menuAddNode = document.getElementById('menuAddNode');
+const menuMakeLabel = document.getElementById('menuMakeLabel');
+let menuContext = { conn:null, clientX:0, clientY:0 };
+function showWireMenu(conn, clientX, clientY){
+  menuContext = { conn, clientX, clientY };
+  wireMenu.style.display='block';
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const menuW = 260, menuH = 90;
+  let x = clientX, y = clientY;
+  if(x + menuW > vw) x = vw - menuW - 8;
+  if(y + menuH > vh) y = vh - menuH - 8;
+  wireMenu.style.left = x + 'px';
+  wireMenu.style.top  = y + 'px';
+}
+function hideWireMenu(){ wireMenu.style.display='none'; }
+menuAddNode.addEventListener('click', ()=>{
+  const {conn, clientX, clientY} = menuContext;
+  hideWireMenu();
+  if(!conn) return;
+  const pos=clientToWorkspace(clientX, clientY);
+  conn.bends.push({x:pos.x,y:pos.y}); selectConnection(conn); renderConnection(conn);
+});
+menuMakeLabel.addEventListener('click', ()=>{
+  const {conn} = menuContext;
+  hideWireMenu();
+  if(!conn) return;
+  convertWireToLabel(conn);
+});
+document.addEventListener('click', (e)=>{ if(e.target!==wireMenu && !wireMenu.contains(e.target)) hideWireMenu(); });
+
+/* ===== Señal visual ===== */
+function applySignalStyles(conn, val){
+  try{
+    conn.from.classList.toggle('signal-on', val===1);
+    conn.to.classList.toggle('signal-on',   val===1);
+  }catch(e){}
+  if(conn.mode==='label'){
+    if(conn.srcBranch){
+      conn.srcBranch.path.classList.toggle('signal', val===1);
+      conn.srcBranch.tagEl.classList.toggle('signal', val===1);
+    }
+    if(conn.dstBranch){
+      conn.dstBranch.path.classList.toggle('signal', val===1);
+      conn.dstBranch.tagEl.classList.toggle('signal', val===1);
+    }
+    const hub = outputHubs.get(conn.from);
+    if(hub){
+      hub.stemPath.classList.toggle('signal', val===1);
+      hub.dot.classList.toggle('signal', val===1);
+    }
+  }else{
+    if(conn.path) conn.path.classList.toggle('signal', val===1);
+  }
+  const srcNode=nodes.find(n=>n.output===conn.from);
+  if(srcNode){
+    srcNode.qIndicator && srcNode.qIndicator.classList.toggle('on', val===1);
+    srcNode.el.classList.toggle('has-signal', srcNode.value===1);
+  }
+  const dstNode=nodes.find(n=>n.inputs.includes(conn.to));
+  if(dstNode){
+    dstNode.el.classList.toggle('has-signal', dstNode.value===1);
+  }
+}
+
+/* Render conexión */
+function renderConnection(conn){
+  if(conn.mode==='label'){
+    if(conn.srcBranch) renderBranch(conn.srcBranch);
+    if(conn.dstBranch) renderBranch(conn.dstBranch);
+    const hub = outputHubs.get(conn.from);
+    hub && renderHub(hub);
+    const val = getSourceNodeValue(conn);
+    applySignalStyles(conn, val);
+    return;
+  }
+  conn.path?.remove(); conn.hit?.remove();
+  (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
+  const s=terminalEdge(conn.from), e=terminalEdge(conn.to);
+  let d='';
+  if(conn.bends.length===0){
+    const midX=(s.x+e.x)/2; d=`M${s.x},${s.y} L${midX},${s.y} L${midX},${e.y} L${e.x},${e.y}`;
+  }else{
+    const pts=[{x:s.x,y:s.y}].concat(conn.bends).concat([{x:e.x,y:e.y}]);
+    d=`M${pts[0].x},${pts[0].y} `; for(let i=1;i<pts.length;i++){ const prev=pts[i-1], next=pts[i]; d+=`L${next.x},${prev.y} L${next.x},${next.y} `; }
+  }
+  const hit=document.createElementNS("http://www.w3.org/2000/svg","path");
+  hit.setAttribute("d",d); hit.setAttribute("class","wire-hit");
+  const path=document.createElementNS("http://www.w3.org/2000/svg","path");
+  path.setAttribute("d",d); path.setAttribute("class","wire-path");
+  if(conn.selected) path.classList.add('selected');
+  const val=getSourceNodeValue(conn);
+  const onSelect=(ev)=>{ ev.stopPropagation(); if(simulation) return; selectConnection(conn); };
+  hit.addEventListener('click',onSelect);
+  hit.addEventListener('touchstart',onSelect,{passive:true});
+  hit.addEventListener('contextmenu',(ev)=>{ ev.preventDefault(); if(simulation) return; showWireMenu(conn, ev.clientX, ev.clientY); });
+  function onPathDown(ev){
+    if(simulation) return;
+    if(ev.type==='mousedown' && ev.button!==0) return;
+    ev.stopPropagation();
+    let cancelled=false;
+    const cancel=()=>{ cancelled=true; if(longPressTimer){ clearTimeout(longPressTimer); longPressTimer=null; } document.removeEventListener('mouseup',cancel); document.removeEventListener('touchend',cancel); };
+    document.addEventListener('mouseup',cancel,{once:true});
+    document.addEventListener('touchend',cancel,{once:true,passive:true});
+    longPressTimer=setTimeout(()=>{
+      if(cancelled) return;
+      const clientX=(ev.type==='mousedown')?ev.clientX:(ev.touches?.[0]?.clientX ?? ev.clientX);
+      const clientY=(ev.type==='mousedown')?ev.clientY:(ev.touches?.[0]?.clientY ?? ev.clientY);
+      showWireMenu(conn, clientX, clientY);
+    },400);
+  }
+  path.addEventListener('mousedown',onPathDown);
+  path.addEventListener('touchstart',onPathDown,{passive:false});
+  hit .addEventListener('mousedown',onPathDown);
+  hit .addEventListener('touchstart',onPathDown,{passive:false});
+  wiresSVG.appendChild(hit); wiresSVG.appendChild(path);
+  conn.hit=hit; conn.path=path;
+  applySignalStyles(conn, val);
+  if(conn.selected && !simulation){
+    conn.handles=[];
+    conn.bends.forEach((b,idx)=>{
+      const g=document.createElementNS("http://www.w3.org/2000/svg","g");
+      const hitC=document.createElementNS("http://www.w3.org/2000/svg","circle");
+      hitC.setAttribute('cx',b.x); hitC.setAttribute('cy',b.y); hitC.setAttribute('r',24); hitC.setAttribute('class','bend-hit');
+      const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+      c.setAttribute('cx',b.x); c.setAttribute('cy',b.y); c.setAttribute('r',11); c.setAttribute('class','bend-handle');
+      g.appendChild(hitC); g.appendChild(c); wiresSVG.appendChild(g);
+      conn.handles.push(c);
+      const start=(ev)=>{ if(simulation) return; ev.stopPropagation(); startDraggingHandle(conn, idx); };
+      c.addEventListener('mousedown',start); c.addEventListener('touchstart',start,{passive:true});
+      hitC.addEventListener('mousedown',start); hitC.addEventListener('touchstart',start,{passive:true});
+    });
+  }
+}
+
+/* Bend dragging */
+function startDraggingHandle(conn,index){
+  if(conn.handles && conn.handles[index]) conn.handles[index].classList.add('dragging');
+  draggingBend={conn,index};
+  document.addEventListener('mousemove',onBendMove);
+  document.addEventListener('mouseup',stopDraggingHandle);
+  document.addEventListener('touchmove',onBendMoveTouch,{passive:false});
+  document.addEventListener('touchend',stopDraggingHandle,{passive:true});
+}
+function stopDraggingHandle(){
+  if(!draggingBend) return;
+  const {conn,index}=draggingBend;
+  if(conn.handles && conn.handles[index]) conn.handles[index].classList.remove('dragging');
+  draggingBend=null;
+  document.removeEventListener('mousemove',onBendMove);
+  document.removeEventListener('mouseup',stopDraggingHandle);
+  document.removeEventListener('touchmove',onBendMoveTouch);
+  document.removeEventListener('touchend',stopDraggingHandle);
+}
+function onBendMove(ev){
+  if(!draggingBend) return;
+  const pos=clientToWorkspace(ev.clientX,ev.clientY);
+  const {conn,index}=draggingBend;
+  conn.bends[index].x=pos.x; conn.bends[index].y=pos.y;
+  renderConnection(conn);
+}
+function onBendMoveTouch(ev){
+  if(!draggingBend) return; ev.preventDefault();
+  const t=ev.touches[0]; const pos=clientToWorkspace(t.clientX,t.clientY);
+  const {conn,index}=draggingBend;
+  conn.bends[index].x=pos.x; conn.bends[index].y=pos.y;
+  renderConnection(conn);
+}
+
+/* Utilidades */
+function getSourceNodeValue(conn){ const n=nodes.find(nn=>nn.output===conn.from); return n? n.value:0; }
+function updateConnections(){ connections = connections.filter(c => c.from && c.to && document.body.contains(c.from) && document.body.contains(c.to)); connections.forEach(c=>renderConnection(c)); }
+
+/* Eliminar bloque + cables asociados y limpiar hubs */
+function removeNode(node){
+  if(simulation) return;
+  if(selectedPinEl && (selectedPinEl===node.output || node.inputs.includes(selectedPinEl))){
+    selectedPinEl.classList.remove('pin-selected'); selectedPinEl=null; pendingOutput=null; removeGhost();
+  }
+  const toRemove = connections.filter(c=> c.from===node.output || node.inputs.includes(c.to) );
+  toRemove.forEach(removeConnection);
+  if(node.output){
+    const hub = outputHubs.get(node.output);
+    if(hub){
+      for(const br of hub.branches){ br.tagEl.remove(); br.path.remove(); br.hit.remove(); }
+      hub.stemPath.remove(); hub.dot.remove(); hub.hit.remove();
+      outputHubs.delete(node.output);
+    }
+  }
+  node.el.remove();
+  nodes = nodes.filter(n=>n!==node);
+  clearSelection(); updateConnections();
+}
+function removeConnection(conn){
+  if(!conn) return;
+  conn.path && conn.path.remove(); conn.hit && conn.hit.remove();
+  (conn.handles||[]).forEach(h=>h.remove()); conn.handles=[];
+  if(conn.srcBranch){
+    const hub = conn.srcBranch.hub;
+    if(hub){ hub.branches.delete(conn.srcBranch); }
+    conn.srcBranch.tagEl.remove(); conn.srcBranch.path.remove(); conn.srcBranch.hit.remove();
+    conn.srcBranch=null;
+    if(hub && hub.branches.size===0){
+      hub.stemPath.remove(); hub.dot.remove(); hub.hit.remove();
+      outputHubs.delete(hub.pin);
+    }
+  }
+  if(conn.dstBranch){
+    conn.dstBranch.tagEl.remove(); conn.dstBranch.path.remove(); conn.dstBranch.hit.remove();
+    conn.dstBranch=null;
+  }
+  const i=connections.indexOf(conn); if(i>=0) connections.splice(i,1);
+  if(selectedConn===conn) selectedConn=null;
+  if(selectedTag && (selectedTag===conn.tagSrcEl || conn.tagDstEl===selectedTag)){ selectedTag.classList.remove('selected'); selectedTag=null; }
+
+  removeGhost && removeGhost();
+  if (typeof selectedPinEl!=='undefined' && (selectedPinEl===conn.from || selectedPinEl===conn.to)) { try{ selectedPinEl.classList.remove('pin-selected'); }catch(e){} selectedPinEl=null; }
+  if (typeof pendingOutput!=='undefined') pendingOutput=null;
+}
+
+/* ===== Lógica de compuertas y temporizadores ===== */
+function evaluateGate(type,inputs){
+  if(inputs.length===0) return 0;
+  switch(type){
+    case 'and': return inputs.every(v=>v===1)?1:0;
+    case 'or':  return inputs.some(v=>v===1)?1:0;
+    case 'not': return inputs[0]?0:1;
+    case 'nand':return inputs.every(v=>v===1)?0:1;
+    case 'nor': return inputs.some(v=>v===1)?0:1;
+    case 'xor': return inputs.reduce((a,b)=>a^b,0);
+    case 'xnor':return evaluateGate('xor',inputs)?0:1;
+    default: return inputs[0]||0;
+  }
+}
+function nowMs(){ return performance.now ? performance.now() : Date.now(); }
+
+function scanLogic(){
+  const tnow = nowMs();
+  // entradas
+  nodes.forEach(n=>{
+    if(n.type==='input') n.value = n.el.classList.contains('active')?1:0;
+    n.invalid=false;
+  });
+  // calcular nextValue
+  nodes.forEach(node=>{
+    if(node.type==='input'){ node.nextValue=node.value; return; }
+    const inVals=connections.filter(c=>node.inputs.includes(c.to)).map(c=>{ const s=nodes.find(n=>n.output===c.from); let v = s ? s.value : 0; if(c.to && c.to.dataset && c.to.dataset.not==='1'){ v = v?0:1; } return v; });
+    const in0 = inVals[0]??0;
+
+    if(node.type==='output' || node.type==='M'){
+      node.nextValue=in0?1:0;
+    } else if(node.type==='sr'){
+      const S=inVals[0]?1:0, R=inVals[1]?1:0;
+      if(S===1 && R===0){ node.q=1; node.nextValue=1; }
+      else if(S===0 && R===1){ node.q=0; node.nextValue=0; }
+      else node.nextValue=node.q||0;
+    } else if(node.type==='ton'){
+      const delay = node.delayMs ?? 1000;
+      if(in0===1){
+        if(node.timerStart==null) node.timerStart = tnow;
+        node.nextValue = (tnow - node.timerStart >= delay) ? 1 : 0;
+      }else{
+        node.timerStart = null;
+        node.nextValue = 0;
+      }
+      node.prevIn = in0;
+    } else if(node.type==='toff'){
+      const delay = node.delayMs ?? 1000;
+      if(in0===1){
+        node.seenHigh = true;
+        node.timerStart = null;
+        node.nextValue = 1;
+      }else{
+        if(!node.seenHigh){
+          node.nextValue = 0;
+          node.timerStart = null;
+        }else{
+          if(node.timerStart==null) node.timerStart = tnow;
+          node.nextValue = (tnow - node.timerStart >= delay) ? 0 : 1;
+        }
+      }
+      node.prevIn = in0;
+    } else {
+      node.nextValue=evaluateGate(node.type,inVals)?1:0;
+    }
+  });
+  // fijar values
+  nodes.forEach(n=>{ n.value=n.nextValue; if(n.type==='sr') n.q=n.nextValue; });
+  // visual de bloques
+  nodes.forEach(n=>{
+    n.el.classList.toggle('has-signal', n.value===1);
+    if(n.type==='input' || n.type==='output' || n.type==='M'){
+      n.el.classList.toggle('active', n.value===1);
+      n.output && n.output.classList.toggle('signal-on', n.value===1);
+    }
+    n.qIndicator && n.qIndicator.classList.toggle('on', n.value===1);
+  });
+  // actualizar conexiones
+  connections.forEach(c=>{
+    const v=getSourceNodeValue(c);
+    applySignalStyles(c, v);
+  });
+  updateConnections();
+}
+
+/* Botones simulación y zoom */
+document.getElementById('simulate').addEventListener('click', ()=>{
+  if(simulation) return;
+  clearSelection(); simulation=true;
+  document.getElementById('simulate')?.classList.add('active');
+  document.getElementById('stop')?.classList.remove('active');
+  nodes.forEach(n=>{
+    if(n.type==='ton' || n.type==='toff'){
+      n.timerStart = null;
+      n.prevIn = 0;
+    }
+    if(n.type==='toff'){ n.seenHigh = false; }
+  });
+  scanLogic(); simTimer=setInterval(scanLogic,SCAN_MS);
+});
+document.getElementById('stop').addEventListener('click', ()=>{
+  if(simTimer){ clearInterval(simTimer); simTimer=null; }
+  simulation=false;
+  nodes.forEach(n=>{
+    n.value=0;
+    n.el.classList.remove('has-signal','active');
+    if(n.type==='input'||n.type==='output'||n.type==='M') n.el.classList.remove('active');
+    n.qIndicator && n.qIndicator.classList.remove('on');
+    n.invalid=false;
+    n.output && n.output.classList.remove('signal-on');
+    n.inputs?.forEach(inp=>inp.classList.remove('signal-on'));
+    if(n.type==='ton' || n.type==='toff'){ n.timerStart=null; n.prevIn=0; }
+    if(n.type==='toff'){ n.seenHigh=false; }
+  });
+  connections.forEach(c=>applySignalStyles(c, 0));
+  updateConnections();
+});
+document.getElementById('zoomIn').addEventListener('click', ()=>setZoom(scale+0.12));
+document.getElementById('zoomOut').addEventListener('click', ()=>setZoom(scale-0.12));
+
+/* Eliminar selección (pero NO cuando estás escribiendo en inputs) */
+document.addEventListener('keydown', (e)=>{
+  const tag = (e.target && e.target.tagName || '').toLowerCase();
+
+// Click del botón Eliminar
+if (typeof deleteBtn !== 'undefined' && deleteBtn) {
+  deleteBtn.addEventListener('click', () => {
+    if(simulation) return;
+    deleteSelected();
+  });
+}
+  if(tag==='input' || tag==='textarea' || e.target.isContentEditable) return; // <- protege al editar tiempo
+  if(e.key==='Delete' || e.key==='Backspace'){
+    if(simulation) return;
+    deleteSelected();
+  }
+  if(e.key==='Escape'){ clearSelection(); }
+});
+
+/* Redibuja en resize */
+window.addEventListener('resize', updateConnections);
+
+/* ====== Guardar / Importar ====== */
+function serialize(){
+  // mapear pines por índice
+  const nodeIndex = new Map(nodes.map((n,i)=>[n, i]));
+  const data = {
+    meta:{ app:"SIMUPASIR", version:1 },
+    counts:{ inputCount, outputCount, memoryCount, blockCodeCount, nextNodeId },
+    nodes: nodes.map(n=>({
+      id:n.id, type:n.type, name:n.name, code:n.code,
+      x:parseFloat(n.el.style.left)||0, y:parseFloat(n.el.style.top)||0,
+      delayMs: (n.type==='ton' || n.type==='toff') ? (n.delayMs ?? 1000) : undefined
+    })),
+    connections: connections.map(c=>{
+      const fromNode = nodes.find(n=>n.output===c.from);
+      const toNode   = nodes.find(n=>n.inputs.includes(c.to));
+      const toIndex  = toNode ? toNode.inputs.indexOf(c.to) : 0;
+      return { fromId: fromNode?.id, toId: toNode?.id, toIndex, mode:c.mode||'wire' };
+    })
+  };
+  return data;
+}
+function download(filename, text){
+  const blob = new Blob([text], {type:"application/json"});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  URL.revokeObjectURL(a.href); a.remove();
+}
+btnSave.addEventListener('click', ()=>{
+  const name = prompt('Nombre del archivo (sin extensión):', 'proyecto');
+  if(name===null) return;
+  const safe = (name.trim() || 'proyecto').replace(/[<>:"/\\|?*\x00-\x1F]/g,'_');
+  const data = serialize();
+  download(safe + '.json', JSON.stringify(data,null,2));
+});
+btnLoad.addEventListener('click', ()=> loadInput.click());
+loadInput.addEventListener('change', async (e)=>{
+  const file = e.target.files?.[0];
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+    loadFromData(data);
+  }catch(err){
+    alert('No se pudo importar el archivo.');
+    console.error(err);
+  }finally{
+    loadInput.value = '';
+  }
+});
+function clearAll(){
+  // borra todo del lienzo
+  [...connections].forEach(removeConnection);
+  [...nodes].forEach(n=>removeNode(n));
+  nodes=[]; connections=[];
+  inputCount=outputCount=memoryCount=blockCodeCount=0;
+  nextNodeId=1;
+  updateConnections();
+}
+function loadFromData(data){
+  clearAll();
+  // restaurar contadores
+  if(data.counts){
+    inputCount=data.counts.inputCount||0;
+    outputCount=data.counts.outputCount||0;
+    memoryCount=data.counts.memoryCount||0;
+    blockCodeCount=data.counts.blockCodeCount||0;
+    nextNodeId=data.counts.nextNodeId||1;
+  }
+  const idMap = new Map();
+  // crear nodos
+  for(const n of (data.nodes||[])){
+    const elType = n.type;
+    createNode(elType, n.x||0, n.y||0);
+    const created = nodes[nodes.length-1];
+    // sobreescribir id, name, code
+    created.id = n.id ?? created.id;
+    if(n.name) created.name = n.name;
+    if(n.code && created.code==null){
+      created.code = n.code;
+      // mostrar badge con el código
+      const badge=document.createElement('div'); badge.className='badge'; badge.textContent=n.code;
+      created.el.appendChild(badge);
+    }
+    // actualizar label visible si es I/Q/M basado en contadores previos ya restaurados
+    created.el.querySelector('.label').textContent = logoLabelForType(created.type).match(/^(TON|TOFF|S\/R|[&≥1=1≠1M1])$/) ? created.el.querySelector('.label').textContent : created.name;
+
+    // restaurar delay
+    if((elType==='ton' || elType==='toff') && typeof n.delayMs==='number'){
+      created.delayMs = n.delayMs;
+    }
+    idMap.set(n.id, created);
+  }
+  // crear conexiones
+  for(const c of (data.connections||[])){
+    const fromNode = idMap.get(c.fromId);
+    const toNode   = idMap.get(c.toId);
+    if(!fromNode || !toNode) continue;
+    const toPin = toNode.inputs[c.toIndex||0];
+    createConnection(fromNode.output, toPin);
+    const conn = connections[connections.length-1];
+    if(c.mode==='label'){ convertWireToLabel(conn); }
+  }
+  updateConnections();
+}
+
+/* Init */
+updateConnections();
+console.log("SIMUPASIR listo: biblioteca en menú, guardar/importar JSON con nombre, temporizadores en segundos.");
+</script>
+
+
+
+<div id="delete-debug"></div>
+<script>
+(function(){
+  const dbg = document.getElementById('delete-debug');
+  const enabled = (localStorage.getItem('debugDelete') === '1');
+  if (enabled) dbg.style.display = 'block';
+  function logDbg(msg){
+    if (!enabled) return;
+    const time = new Date().toLocaleTimeString();
+    dbg.innerHTML = '<b>DEL</b> ' + time + '<br>' + msg.replaceAll('\n','<br>');
+  }
+  window.__delDbg = logDbg;
+
+  // Strong keydown capture
+  const keyHandler = (e) => {
+    // Evita borrar si estás escribiendo
+    const el = document.activeElement;
+    const typing = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+    if (typing) return;
+    if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      e.stopPropagation();
+      __delDbg('keydown ' + e.key);
+      try { deleteSelected(); } catch(err){ console.error(err); __delDbg('ERR: '+err.message); }
+    }
+  };
+  window.addEventListener('keydown', keyHandler, true);
+  document.addEventListener('keydown', keyHandler, true);
+
+  // Defensive deleteSelected shim (keeps original if exists)
+  const hasOwnDelete = (typeof window.deleteSelected === 'function');
+  if (!hasOwnDelete) {
+    window.deleteSelected = function(){
+      if (typeof simulation !== 'undefined' && simulation) { __delDbg('bloqueado: simulation=true'); return; }
+      // Prefer variables if existen
+      if (typeof selectedNode !== 'undefined' && selectedNode) {
+        __delDbg('delete node via selectedNode');
+        if (typeof removeNode === 'function') { removeNode(selectedNode); return; }
+      }
+      if (typeof selectedConn !== 'undefined' && selectedConn) {
+        __delDbg('delete conn via selectedConn');
+        if (typeof removeConnection === 'function') { removeConnection(selectedConn); return; }
+      }
+      // Fallback DOM: busca algo .selected con data-type / data-id
+      const el = document.querySelector('.selected,[aria-selected="true"]');
+      if (el){
+        const t = el.dataset.type || el.getAttribute('data-type') || el.getAttribute('data-kind');
+        const id = el.dataset.id || el.getAttribute('data-id') || el.id;
+        __delDbg('fallback DOM sel t='+t+' id='+id);
+        if (t && /node/i.test(t) && typeof removeNodeById === 'function') { removeNodeById(id); return; }
+        if (t && /(wire|conn|link|edge)/i.test(t) && typeof removeConnectionById === 'function') { removeConnectionById(id); return; }
+      }
+      __delDbg('nada para borrar');
+    };
+  }
+
+  // Ensure button works
+  const btn = document.getElementById('deleteBtn') || document.querySelector('[data-action="delete"]');
+  if (btn){
+    btn.addEventListener('click', (e)=>{
+      __delDbg('click botón');
+      try { deleteSelected(); } catch(err){ console.error(err); __delDbg('ERR:'+err.message); }
+    });
+  }
+})();
+</script>
+
+
+<script>
+// Opcionales: remoción por ID (por si el proyecto expone arrays globales)
+if (typeof removeNodeById !== 'function') {
+  window.removeNodeById = function(id){
+    if (!id || !Array.isArray(window.nodes)) return;
+    const node = window.nodes.find(n => String(n.id) === String(id));
+    if (node && typeof removeNode === 'function') removeNode(node);
+  }
+}
+if (typeof removeConnectionById !== 'function') {
+  window.removeConnectionById = function(id){
+    if (!id || !Array.isArray(window.connections)) return;
+    const conn = window.connections.find(c => String(c.id) === String(id));
+    if (conn && typeof removeConnection === 'function') removeConnection(conn);
+  }
+}
+</script>
+
+
+    <script>
+    // assistant-injected-pwa-and-ui
+    ;(function() {
+      // ==== Orientación: abre/cierra sidebar según landscape/portrait ====
+      function getEl(id) { return document.getElementById(id) }
+      const sidebar = getEl('sidebar');
+
+      function syncSidebarToOrientation() {
+        if (!sidebar) return;
+        const isLandscape = window.matchMedia('(orientation: landscape)').matches;
+        // Si tu UI usa la clase 'open' para el drawer, la forzamos en landscape
+        sidebar.classList.toggle('open', !!isLandscape);
+      }
+      window.addEventListener('orientationchange', syncSidebarToOrientation);
+      window.addEventListener('resize', syncSidebarToOrientation);
+      document.addEventListener('DOMContentLoaded', syncSidebarToOrientation);
+
+      // ==== Pines: facilitar tap/click cerca ====
+      window.isNearTerminal = function(term, clientX, clientY, px=14){
+        if (!term || !term.getBoundingClientRect) return false;
+        const r = term.getBoundingClientRect();
+        return (clientX >= r.left - px && clientX <= r.right + px &&
+                clientY >= r.top  - px && clientY <= r.bottom + px);
+      };
+
+      // ==== Fantasmas de wires: helper opcional ====
+      // Llama a purgeOrphanSVG() tras borrar conexiones si tu app expone:
+      //   window.connections (array) y window.wiresSVG (SVGElement)
+      window.purgeOrphanSVG = function(){
+        try {
+          const wiresSVG = window.wiresSVG;
+          const connections = window.connections;
+          if (!wiresSVG || !connections) return; // no-op si tu app no usa estos nombres
+
+          const live = new Set();
+          connections.forEach(c => {
+            if (c && typeof c === 'object') {
+              if (c.path) live.add(c.path);
+              if (c.hit) live.add(c.hit);
+              (c.handles||[]).forEach(h=> live.add(h));
+              if (c.srcBranch) {
+                if (c.srcBranch.path) live.add(c.srcBranch.path);
+                if (c.srcBranch.hit)  live.add(c.srcBranch.hit);
+              }
+              if (c.dstBranch) {
+                if (c.dstBranch.path) live.add(c.dstBranch.path);
+                if (c.dstBranch.hit)  live.add(c.dstBranch.hit);
+              }
+              if (window.outputHubs && typeof window.outputHubs.get === 'function') {
+                const hub = window.outputHubs.get(c.from);
+                if (hub) {
+                  if (hub.stemPath) live.add(hub.stemPath);
+                  if (hub.dot)      live.add(hub.dot);
+                  if (hub.hit)      live.add(hub.hit);
+                }
+              }
+            }
+          });
+          Array.from(wiresSVG.querySelectorAll('*')).forEach(el => {
+            if (!live.has(el)) el.remove();
+          });
+        } catch (err) {
+          console.warn('purgeOrphanSVG error:', err);
+        }
+      };
+
+      // Dispara purga cuando alguna parte de tu código emita este evento:
+      window.addEventListener('connection-removed', function(){
+        if (window.requestIdleCallback) requestIdleCallback(window.purgeOrphanSVG);
+        else setTimeout(window.purgeOrphanSVG, 0);
+      });
+
+      // ==== Registro Service Worker para PWA ====
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function(){
+          navigator.serviceWorker.register('service-worker.js').catch(console.warn);
+        });
+      }
+    })();
+    </script>
+    
+  <!-- Panel de Edición de Número -->
+  <div id="editPanel" style="position:fixed;right:12px;top:58px;z-index:260;background:#ffffffcc;backdrop-filter:saturate(1.2) blur(6px);border:2px solid #003366;border-radius:12px;box-shadow:0 10px 24px rgba(0,0,0,.15);padding:12px;display:none;min-width:260px">
+    <div style="font-weight:900;color:#003366;margin-bottom:8px">Editar número del bloque</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div id="editPrefix" style="font-weight:900;font-size:18px;color:#003366">B</div>
+      <input id="editNumber" type="number" min="0" step="1" value="1" style="flex:1;padding:8px;border:2px solid #bbb;border-radius:8px;font-weight:800">
+    </div>
+    <div id="editPreview" style="font-weight:900;margin:-4px 0 8px 0;color:#0f172a"></div>
+    <div id="editError" style="font-size:12px;color:#b91c1c;display:none;margin-bottom:6px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button id="btnEditCancel" style="padding:8px 10px;border-radius:8px;border:1px solid #777;background:#fff;font-weight:800">Cancelar</button>
+      <button id="btnEditSave" style="padding:8px 10px;border-radius:8px;border:1px solid #003366;background:#003366;color:#fff;font-weight:900">Guardar</button>
+    </div>
+    <div id="editHint" style="margin-top:8px;font-size:12px;color:#333">El número no debe repetirse dentro del mismo tipo (I, Q, M o B###).</div>
+  </div>
+
+
+<script>
+/* === Assistant: Botón "Editar" con panel lateral, validación de unicidad y actualización de etiquetas === */
+(function(){
+  const btnEdit = document.getElementById('btnEdit');
+  const previewEl = document.getElementById('editPreview');
+  const errorEl = document.getElementById('editError');
+  const panel = document.getElementById('editPanel');
+  const prefixEl = document.getElementById('editPrefix');
+  const numberInput = document.getElementById('editNumber');
+  const btnSave = document.getElementById('btnEditSave');
+  const btnCancel = document.getElementById('btnEditCancel');
+
+  function extractDigits(s){ const m=String(s||"").match(/\d+/); return m? parseInt(m[0],10): null; }
+  function getNodeByEl(el){
+    if(!el) return null;
+    // Busca en window.nodes por .el contenedor
+    if (Array.isArray(window.nodes)){
+      for (const n of window.nodes){
+        try{
+          if(n && n.el && n.el.contains && n.el.contains(el)) return n;
+        }catch(e){}
+      }
+    }
+    // Fallback por data-node-id
+    const host = el.closest?.('[data-node-id]');
+    if(host){
+      const nid = host.getAttribute('data-node-id');
+      if (Array.isArray(window.nodes)){
+        const f = window.nodes.find(nn => String(nn?.id||'')===String(nid));
+        if (f) return f;
+      }
+    }
+    return null;
+  }
+  function getSelectedNode(){
+    // 1) Prefer global
+    if (window.selectedNode && window.selectedNode.el) return window.selectedNode;
+    // 2) selectedNodes array (id or object)
+    if (Array.isArray(window.selectedNodes) && window.selectedNodes.length){
+      const cand = window.selectedNodes[0];
+      if (cand && cand.el) return cand;
+      if (cand && (cand.id||cand.nodeId) && Array.isArray(window.nodes)){
+        const found = window.nodes.find(n => n && (n.id===cand.id || n.id===cand.nodeId));
+        if (found) return found;
+      }
+    }
+    // 3) Scan nodes by flags / CSS
+    if (Array.isArray(window.nodes)){
+      const found = window.nodes.find(n => n && (n.isSelected || n.selected || (n.el && n.el.classList && n.el.classList.contains('selected'))));
+      if (found) return found;
+    }
+    return null;
+  }
+  function zpad(n,len=3){ return String(n).padStart(len,'0'); }
+  function currentTakenNumbersByType(exceptNode, typeKey){
+  const taken = new Set();
+  (window.nodes||[]).forEach(n=>{
+    if(!n || n===exceptNode) return;
+    let key;
+    if(n.type==='input') key='I';
+    else if(n.type==='output') key='Q';
+    else if(n.type==='M') key='M';
+    else key='B';
+    if(key!==typeKey) return;
+    if(key==='I' || key==='Q' || key==='M'){
+      const m = String(n.name||'').match(/\d+/);
+      if(m) taken.add(parseInt(m[0],10));
+    } else {
+      const m = String(n.code||'').match(/\d+/);
+      if(m) taken.add(parseInt(m[0],10));
+    }
+  });
+  return taken;
+}
+
+  function refreshAllTags(){
+    if(!window.connections) return;
+    window.connections.forEach(conn=>{
+      if(conn.mode==='label'){
+        try{
+          if (typeof getDestNameWithPin === 'function' && conn.srcBranch && conn.srcBranch.tagEl) {
+            conn.srcBranch.tagEl.textContent = getDestNameWithPin(conn);
+          }
+          if (typeof getSourceName === 'function' && conn.dstBranch && conn.dstBranch.tagEl) {
+            conn.dstBranch.tagEl.textContent = getSourceName(conn);
+          }
+        }catch(e){/*no-op*/}
+      }
+    });
+  }
+
+  function openPanelFor(node){
+    if(!node) return;
+    // Determine prefix and current number
+    let pref = 'B', cur = null;
+    if(node.type==='input' || node.type==='output' || node.type==='M'){
+      pref = node.type==='input' ? 'I' : (node.type==='output' ? 'Q' : 'M');
+      cur = extractDigits(node.name);
+    } else {
+      pref = 'B';
+      cur = extractDigits(node.code);
+    }
+    prefixEl.textContent = pref;
+    numberInput.value = (cur ?? 1);
+    numberInput.focus();
+    panel.style.display = 'block';
+    // Reset visuals
+    numberInput.style.borderColor = '#bbb';
+    errorEl.style.display='none'; errorEl.textContent='';
+    previewEl.textContent = (pref==='B' ? ('B' + String(numberInput.value).padStart(3,'0')) : (pref + String(numberInput.value)));
+    btnSave.disabled = false;
+  }
+
+  function closePanel(){ panel.style.display='none'; }
+
+  btnCancel.addEventListener('click', closePanel);
+  /* selection capture */
+  document.addEventListener('mousedown', (e)=>{
+    const node = getNodeByEl(e.target);
+    if(!node) return;
+    // Limpia selección anterior visual
+    try{
+      if(window.selectedNode && window.selectedNode.el){ window.selectedNode.el.classList.remove('selected'); }
+    }catch(_){}
+    // Asigna y marca seleccionado
+    window.selectedNode = node;
+    try{ node.el.classList.add('selected'); }catch(_){}
+  }, true);
+  function validateLive(){
+    const pref = prefixEl.textContent || 'B';
+    const node = getSelectedNode();
+    const taken = currentTakenNumbersByType(node, pref);
+    const raw = String(numberInput.value||'').trim();
+    let valid = /^\d+$/.test(raw);
+    if(!valid){
+      errorEl.style.display='block'; errorEl.textContent='Ingresa solo números enteros.';
+    }else{
+      const num = parseInt(raw,10);
+      if(taken.has(num)){
+        valid = false;
+        errorEl.style.display='block'; errorEl.textContent='Ese número ya existe en ' + pref + '.';
+      }else{
+        errorEl.style.display='none'; errorEl.textContent='';
+      }
+    }
+    // Vista previa
+    const preview = (pref==='B') ? ('B' + String(raw||'0').padStart(3,'0')) : (pref + (raw||''));
+    previewEl.textContent = preview;
+
+    numberInput.style.borderColor = valid ? '#16a34a' : '#b91c1c';
+    btnSave.disabled = !valid;
+  }
+  numberInput.addEventListener('input', validateLive);
+
+  btnEdit?.addEventListener('click', ()=>{
+    // Necesita un nodo seleccionado
+    const node = getSelectedNode();
+    if(!node){
+      alert('Selecciona un bloque primero.');
+      return;
+    }
+    openPanelFor(node);
+  });
+
+  btnSave.addEventListener('click', ()=>{
+    const node = getSelectedNode();
+    if(!node){ closePanel(); return; }
+    const pref = prefixEl.textContent || 'B';
+    const taken = currentTakenNumbersByType(node, pref);
+    const raw = String(numberInput.value||'').trim();
+    if(!/^\d+$/.test(raw)){ alert('Ingresa solo números enteros.'); return; }
+    const num = parseInt(raw,10);
+    if(taken.has(num)){ alert('Ese número ya está en uso por otro bloque. Elige otro.'); return; }
+
+    if(node.type==='input' || node.type==='output' || node.type==='M'){
+      const prefix = prefixEl.textContent; // I/Q/M
+      node.name = prefix + String(num);
+      const labelEl = node.el.querySelector('.label');
+      if(labelEl) labelEl.textContent = node.name;
+    }else{
+      node.code = 'B' + zpad(num);
+      const badgeEl = node.el.querySelector('.badge');
+      if(badgeEl) badgeEl.textContent = node.code;
+    }
+
+    try{
+      if(typeof updateConnections === 'function') updateConnections();
+    }catch(e){}
+    refreshAllTags();
+    closePanel();
+  });
+
+  // Cerrar panel si se hace click fuera
+  document.addEventListener('click', (e)=>{
+    if(!panel || panel.style.display==='none') return;
+    const inside = panel.contains(e.target) || (e.target===btnEdit);
+    if(!inside) panel.style.display='none';
+  }, true);
+
+  // Exponer helpers para depuración
+  window.__editPanelHelpers = { currentTakenNumbersByType, extractDigits };
+})();
+</script>
+
+
+<script>
+// === NUEVO: limpiar circuito y reiniciar numeración ===
+(function(){
+  const btnNew = document.getElementById('btnNew');
+
+  function stopSimulationIfNeeded(){
+    try{
+      if (typeof simulation!=='undefined' && simulation){
+        simulation = false;
+        if (typeof simTimer!=='undefined' && simTimer){ clearInterval(simTimer); simTimer = null; }
+        document.getElementById('simulate')?.classList.remove('active');
+        document.getElementById('stop')?.classList.remove('active');
+      }
+    }catch(e){}
+  }
+
+  function clearAllGraphics(){
+    try{
+      document.querySelectorAll('.node').forEach(el => el.remove());
+      document.querySelectorAll('#wires .wire-path, #wires .wire-hit, #wires .bend-hit, #wires .hub-dot, #wires .hub-hit').forEach(el => el.remove());
+      document.querySelectorAll('.conn-tag').forEach(el => el.remove());
+      if (typeof pendingGhost!=='undefined' && pendingGhost){ try{ pendingGhost.remove(); }catch(_){} pendingGhost = null; }
+    }catch(e){}
+  }
+
+  function resetStateVariables(){
+    try{
+      // Estructuras
+      if (typeof nodes!=='undefined') nodes.length = 0;
+      if (typeof connections!=='undefined') connections.length = 0;
+
+      // Selecciones
+      if (typeof selectedNode!=='undefined' && selectedNode){ try{ selectedNode.el?.classList?.remove('selected'); }catch(_){} }
+      selectedNode = null;
+      selectedConn = null;
+      selectedTag = null;
+      selectedBranch = null;
+      draggingBend = null;
+
+      // Pines/ghost
+      if (typeof selectedPinEl!=='undefined' && selectedPinEl){ try{ selectedPinEl.classList.remove('pin-selected'); }catch(_){} }
+      selectedPinEl = null;
+      pendingOutput = null;
+
+      // Contadores
+      inputCount = 0;
+      outputCount = 0;
+      memoryCount = 0;
+      blockCodeCount = 0;
+      nextNodeId = 1;
+
+      // Gestos
+      if (typeof longPressTimer!=='undefined' && longPressTimer){ clearTimeout(longPressTimer); longPressTimer = null; }
+
+      // Zoom/Pan
+      if (typeof scale!=='undefined'){ scale = 1; }
+      if (typeof panX!=='undefined'){ panX = 0; }
+      if (typeof panY!=='undefined'){ panY = 0; }
+      if (typeof updateTransform==='function') updateTransform();
+      if (typeof updateConnections==='function') updateConnections();
+    }catch(e){}
+  }
+
+  function newCircuit(){
+    const ok = confirm('¿Iniciar un circuito nuevo? Se perderán los cambios no guardados.');
+    if (!ok) return;
+    stopSimulationIfNeeded();
+    if (typeof clearSelection==='function') clearSelection();
+    clearAllGraphics();
+    resetStateVariables();
+  }
+
+  // Click y atajo
+  btnNew?.addEventListener('click', newCircuit);
+  document.addEventListener('keydown', (e)=>{
+    const key = (e.key || '').toLowerCase();
+    if ((e.ctrlKey || e.metaKey) && key === 'n'){
+      e.preventDefault();
+      newCircuit();
+    }
+  });
+})();
+</script>
+
+  <script src="./assets/js/main.js"></script>
+<script id="workarea-helper">
+(function(){
+  // Si tu motor usa una grilla/límites, puedes leer estas dimensiones
+  // desde CSS variables:
+  try {
+    const root = getComputedStyle(document.documentElement);
+    const W = parseInt(root.getPropertyValue('--workarea-width'));
+    const H = parseInt(root.getPropertyValue('--workarea-height'));
+    // Si tienes funciones de actualización, invócalas una vez para recalcular bounds
+    if (typeof updateTransform === 'function') updateTransform();
+    if (typeof updateConnections === 'function') updateConnections();
+  } catch(e){}
+})();
+</script>
+<script id="immersive-helper">
+(function(){
+  // Prevent context menu (long-press actions) on the whole app
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); }, {passive:false});
+
+  // Try to go fullscreen on first pointer interaction (required by browsers)
+  let triedFS = false;
+  function goFS(){
+    if (triedFS) return;
+    triedFS = true;
+    const el = document.documentElement;
+    if (el.requestFullscreen){
+      el.requestFullscreen().catch(()=>{});
+    } else if (el.webkitRequestFullscreen){
+      el.webkitRequestFullscreen();
+    }
+    // Attempt orientation lock (best-effort; may fail silently)
+    // orientation lock removed for free orientation (Option A));
+    }
+  }
+  window.addEventListener('pointerdown', goFS, {once:true, passive:true});
+  window.addEventListener('keydown', (e)=>{
+    if ((e.key||'').toLowerCase() === 'f') goFS();
+  });
+})();
+</script>
+<script id="body-app-class">document.body.classList.add("app");</script>
+
+<script id="workspace-center-once">
+(function(){
+  // Center only once per install/run, if pan/zoom globals exist and no prior movement
+  let centered = false;
+  function centerOnce(){
+    if (centered) return;
+    centered = true;
+    try{
+      // Skip if user has already panned/zoomed (heuristic)
+      if (typeof panX !== 'undefined' && typeof panY !== 'undefined' && (panX !== 0 || panY !== 0)) return;
+      const root = getComputedStyle(document.documentElement);
+      const W = parseInt(root.getPropertyValue('--workarea-width')) || 10000;
+      const H = parseInt(root.getPropertyValue('--workarea-height')) || 10000;
+      const vw = window.innerWidth || document.documentElement.clientWidth;
+      const vh = window.innerHeight || document.documentElement.clientHeight;
+      // If we have scale variable, keep it; otherwise assume 1
+      let s = (typeof scale!=='undefined' ? scale : 1);
+      // Center pan so that (0,0)-(W,H) is centered
+      if (typeof panX!=='undefined') panX = (vw - W * s) / 2;
+      if (typeof panY!=='undefined') panY = (vh - H * s) / 2;
+      if (typeof updateTransform==='function') updateTransform();
+      if (typeof updateConnections==='function') updateConnections();
+    }catch(e){}
+  }
+  // run on first interaction or when ready
+  window.addEventListener('load', centerOnce, {once:true});
+  window.addEventListener('orientationchange', () => { /* don't re-center after first */ }, {passive:true});
+})();
+</script>
+
+
+<script id="workspace-sizing">
+(function(){
+  const ws = document.getElementById('workspace');
+  let svg = document.getElementById('wires');
+  if(!ws) return;
+  if(!svg){
+    svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.id = "wires";
+    svg.setAttribute("preserveAspectRatio","none");
+    ws.appendChild(svg);
+  }
+  function cssSize(name, fallback){
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const n = parseInt(v,10);
+    return isNaN(n) ? fallback : n;
+  }
+  function applySize(){
+    const S = cssSize('--workspace-size', 10000);
+    svg.setAttribute('width',  S);
+    svg.setAttribute('height', S);
+    svg.setAttribute('viewBox', `0 0 ${S} ${S}`);
+    // Si tu motor usa updateConnections/updateTransform, recalcúlalos
+    if (typeof updateConnections === 'function') updateConnections();
+    if (typeof updateTransform === 'function')   updateTransform();
+  }
+  applySize();
+  window.addEventListener('resize', ()=>{
+    // no cambiamos S en resize, pero puede forzar recálculo de conexiones
+    if (typeof updateConnections === 'function') updateConnections();
+  });
+})();
+</script>
+</body></html>
+
+
+<script>
+// ==== Assistant Add-on: Undo (Ctrl+Z) + Edición de números en B/Q/M/I ====
+
+// --- 0) Helpers de UI: crear botón en topbar ---
+(function addUndoButton(){
+  const topbar = document.getElementById('topbar');
+  if(!topbar) return;
+  const btn = document.createElement('button');
+  btn.id = 'undoBtn';
+  btn.textContent = 'Deshacer ⤺';
+  btn.title = 'Ctrl+Z';
+  btn.addEventListener('click', ()=>undo());
+  // Insertar antes de spacer
+  const spacer = document.getElementById('spacer');
+  topbar.insertBefore(btn, spacer);
+})();
+
+// --- 1) Sistema de historial (instantáneas) ---
+let __history = [];
+let __historyPtr = -1;
+let __historyBusy = false;
+
+function pushHistory(label=''){
+  if(__historyBusy) return; // evita push durante import
+  try{
+    const snap = exportState();
+    // cortar rama futura si deshicimos
+    if(__historyPtr < __history.length - 1){
+      __history = __history.slice(0, __historyPtr + 1);
+    }
+    __history.push({ data: snap, label });
+    __historyPtr = __history.length - 1;
+  }catch(e){
+    console.warn('No se pudo hacer snapshot:', e);
+  }
+}
+
+function undo(){
+  if(__historyPtr <= 0) return;
+  __historyPtr--;
+  const entry = __history[__historyPtr];
+  if(!entry) return;
+  importState(entry.data);
+}
+
+document.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='z'){
+    e.preventDefault();
+    undo();
+  }
+});
+
+// --- 2) Exportar/Importar estado (ligero) ---
+function exportState(){
+  // Guardamos nodos mínimos + conexiones por índices de pin
+  const nodeDump = nodes.map(n=>{
+    const rect = { x: parseFloat(n.el.style.left||'0'), y: parseFloat(n.el.style.top||'0') };
+    const inputs = (n.inputs||[]).length;
+    return {
+      id:n.id, type:n.type, name:n.name, code:n.code||null,
+      x:rect.x, y:rect.y,
+      delayMs: n.delayMs ?? null,
+      q: n.q ?? null,
+      inputsCount: inputs
+    };
+  });
+  const conDump = connections.map(c=>{
+    const fromIdx = nodes.findIndex(n=>n.output===c.from);
+    const toNodeIdx = nodes.findIndex(n=>n.inputs && n.inputs.includes(c.to));
+    const toPinIdx = (toNodeIdx>=0) ? nodes[toNodeIdx].inputs.indexOf(c.to) : -1;
+    return {
+      fromNodeIndex: fromIdx,
+      toNodeIndex: toNodeIdx,
+      toPinIndex: toPinIdx,
+      mode: c.mode || 'wire',
+      bends: Array.isArray(c.bends) ? c.bends.map(b=>({x:b.x,y:b.y})) : []
+    };
+  });
+  return {
+    nodes: nodeDump,
+    connections: conDump,
+    counts:{ inputCount, outputCount, memoryCount, blockCodeCount, nextNodeId }
+  };
+}
+
+function importState(data){
+  if(!data) return;
+  __historyBusy = true;
+  try{
+    // limpiar escena
+    [...(nodes||[])].forEach(n=> n && n.el && n.el.remove());
+    nodes.length = 0;
+    // limpiar conexiones y SVG
+    (connections||[]).slice().forEach(c=>{ try{ removeConnection(c); }catch{} });
+    connections.length = 0;
+    // restaurar contadores
+    if(data.counts){
+      inputCount = data.counts.inputCount||0;
+      outputCount = data.counts.outputCount||0;
+      memoryCount = data.counts.memoryCount||0;
+      blockCodeCount = data.counts.blockCodeCount||0;
+      nextNodeId = data.counts.nextNodeId||1;
+    }
+    // recrear nodos
+    const created = [];
+    data.nodes.forEach(n=>{
+      createNode(n.type, n.x, n.y);
+      const nn = nodes[nodes.length-1];
+      // Ajustar nombre/código exactos (para conservar números editados)
+      if(n.type==='input' || n.type==='output' || n.type==='M'){
+        nn.name = n.name; // como 'I7', 'Q3', 'M2'
+        nn.el.querySelector('.label').textContent = n.name;
+      }else{
+        nn.code = n.code; // 'B123'
+        const badge = nn.el.querySelector('.badge');
+        if(badge) badge.textContent = n.code;
+        nn.el.querySelector('.label').textContent = (nn.type==='not'?'1':
+          nn.type==='and'?'&':
+          nn.type==='or'?'≥1':
+          nn.type==='nand'?'&':
+          nn.type==='nor'?'≥1':
+          nn.type==='xor'?'=1':
+          nn.type==='xnor'?'≠1':
+          nn.type==='sr'?'S/R':
+          nn.type==='ton'?'TON':
+          nn.type==='toff'?'TOFF': (nn.type||'').toUpperCase());
+      }
+      if(n.delayMs!=null) nn.delayMs = n.delayMs;
+      if(n.q!=null) nn.q = n.q;
+      nn.id = n.id;
+      nn.el.style.left = n.x+'px';
+      nn.el.style.top  = n.y+'px';
+      created.push(nn);
+    });
+    // recrear conexiones
+    data.connections.forEach(c=>{
+      if(c.fromNodeIndex<0 || c.toNodeIndex<0) return;
+      const src = created[c.fromNodeIndex];
+      const dst = created[c.toNodeIndex];
+      if(!src || !dst) return;
+      const toPin = dst.inputs[c.toPinIndex] || dst.inputs[0];
+      createConnection(src.output, toPin);
+      const conn = connections[connections.length-1];
+      conn.bends = (c.bends||[]).map(b=>({x:b.x,y:b.y}));
+      renderConnection(conn);
+      // Si era "label", convierte a etiqueta
+      if(c.mode==='label'){
+        try{ convertWireToLabel(conn); }catch{}
+      }
+    });
+    updateConnections();
+  }catch(e){
+    console.error('Error al importar estado:', e);
+  }finally{
+    __historyBusy = false;
+  }
+}
+
+// Hacer 1er snapshot al cargar
+window.addEventListener('load', ()=>setTimeout(()=>pushHistory('init'), 100));
+
+// --- 3) Hookear puntos de cambio para snap automático ---
+(function hookMutations(){
+  const _createNode = createNode;
+  createNode = function(type,x,y){
+    _createNode(type,x,y);
+    pushHistory('crear nodo');
+  };
+  const _removeNode = removeNode;
+  removeNode = function(node){
+    _removeNode(node);
+    pushHistory('eliminar nodo');
+  };
+  const _createConnection = createConnection;
+  createConnection = function(from,to){
+    _createConnection(from,to);
+    pushHistory('crear conexión');
+  };
+  const _removeConnection = removeConnection;
+  removeConnection = function(conn){
+    _removeConnection(conn);
+    pushHistory('eliminar conexión');
+  };
+  const _convertWireToLabel = convertWireToLabel;
+  convertWireToLabel = function(conn){
+    _convertWireToLabel(conn);
+    pushHistory('wire→label');
+  };
+})();
+
+// --- 4) Edición de números (B/Q/M/I) con validación de unicidad ---
+function __parseBQMI(node){
+  // Devuelve {prefix, numStr, num}
+  if(node.type==='input' || node.type==='output' || node.type==='M'){
+    const m = String(node.name||'').match(/^([IQM])(\d+)$/i);
+    if(!m) return null;
+    return { prefix: m[1].toUpperCase(), numStr: m[2], num: parseInt(m[2],10) };
+  }else{
+    const m = String(node.code||'').match(/^B(\d{1,})$/i);
+    if(!m) return null;
+    return { prefix:'B', numStr: m[1], num: parseInt(m[1],10) };
+  }
+}
+
+function __numberExists(prefix, num, exceptNode){
+  return nodes.some(n=>{
+    const p = __parseBQMI(n);
+    if(!p) return false;
+    if(n===exceptNode) return false;
+    return p.prefix===prefix && p.num===num;
+  });
+}
+
+function __formatWithPrefix(prefix, num){
+  if(prefix==='B'){
+    // Mantener 3 dígitos mínimo para B (001, 042, 999, 1000 sin padding extra)
+    const s = String(num);
+    return 'B' + (s.length>=3 ? s : ('000'+s).slice(-3));
+  }else{
+    return prefix + String(num);
+  }
+}
+
+function renameNodeNumber(node, newNum){
+  const p = __parseBQMI(node);
+  if(!p) return false;
+  if(!Number.isInteger(newNum) || newNum<0) return false;
+  if(__numberExists(p.prefix, newNum, node)) return false;
+
+  // Aplicar
+  if(p.prefix==='B'){
+    node.code = __formatWithPrefix('B', newNum);
+    const badge = node.el.querySelector('.badge');
+    if(badge) badge.textContent = node.code;
+  }else{
+    node.name = __formatWithPrefix(p.prefix, newNum);
+    const lbl = node.el.querySelector('.label');
+    if(lbl) lbl.textContent = node.name;
+  }
+  // Actualizar etiquetas de conexiones
+  try{
+    connections.forEach(c=>{
+      if(c.mode==='label'){
+        // recomputar textos usando helpers existentes
+        if(c.srcBranch) c.srcBranch.tagEl.textContent = getDestNameWithPin(c);
+        if(c.dstBranch) c.dstBranch.tagEl.textContent = getSourceName(c);
+      }
+    });
+  }catch{}
+  updateConnections();
+  pushHistory('renombrar número');
+  return true;
+}
+
+// UI: doble clic/tap para editar números
+function attachNumberEditor(node){
+  const targetEls = [];
+  if(node.type==='input' || node.type==='output' || node.type==='M'){
+    const lbl = node.el.querySelector('.label');
+    if(lbl) targetEls.push(lbl);
+  }else{
+    const badge = node.el.querySelector('.badge');
+    if(badge) targetEls.push(badge);
+  }
+  targetEls.forEach(el=>{
+    let lastTap=0;
+    const handler = (ev)=>{
+      ev.stopPropagation();
+      const cur = __parseBQMI(node);
+      if(!cur) return;
+      const val = prompt(`Nuevo número para ${cur.prefix} (actual: ${cur.numStr})`, cur.numStr);
+      if(val==null) return;
+      const n = parseInt(val,10);
+      if(isNaN(n) || n<0){
+        alert('Número inválido.');
+        return;
+      }
+      if(__numberExists(cur.prefix, n, node)){
+        alert(`Ya existe ${__formatWithPrefix(cur.prefix, n)}. Debe ser único.`);
+        return;
+      }
+      if(!renameNodeNumber(node, n)){
+        alert('No se pudo cambiar el número.');
+      }
+    };
+    el.addEventListener('dblclick', handler);
+    el.addEventListener('touchend', (e)=>{
+      const now = e.timeStamp || Date.now();
+      if(now - lastTap < 350){ handler(e); }
+      lastTap = now;
+    }, {passive:true});
+  });
+}
+
+// Hook: cuando se crea un nodo, conectar editor de números si aplica
+(function hookNumberEditor(){
+  const _createNode = createNode;
+  createNode = function(type,x,y){
+    _createNode(type,x,y);
+    const node = nodes[nodes.length-1];
+    // Solo para B, I, Q, M
+    if(node && (node.type==='input'||node.type==='output'||node.type==='M' || (node.code && /^B/.test(node.code)))){
+      attachNumberEditor(node);
+    }
+  };
+  // adjuntar a nodos existentes en caso de proyecto abierto
+  window.addEventListener('load', ()=>{
+    nodes.forEach(n=>{
+      if(n && (n.type==='input'||n.type==='output'||n.type==='M' || (n.code && /^B/.test(n.code)))){
+        attachNumberEditor(n);
+      }
+    });
+  });
+})();
+
+</script>
