@@ -1563,6 +1563,96 @@ html.theme-logosoft .node.has-signal {
   }
 </style>
 
+
+<style id="active-green-all-themes">
+  /* === Active block (has-signal / ui-on) — ALL THEMES === */
+
+  /* Original theme (no class) */
+  html:not(.theme-dark):not(.theme-logosoft) .node.has-signal,
+  html:not(.theme-dark):not(.theme-logosoft) .node.ui-on {
+    background: rgba(0, 255, 136, 0.20) !important;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.50) !important;
+    border-color: #00ff88 !important;
+    outline: none !important; filter: none !important;
+  }
+
+  /* LogoSoft theme */
+  html.theme-logosoft .node.has-signal,
+  html.theme-logosoft .node.ui-on {
+    background: #d1ffe7 !important;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.60) !important;
+    border-color: #00ff88 !important;
+    outline: none !important; filter: none !important;
+  }
+
+  /* Dark theme */
+  html.theme-dark .node.has-signal,
+  html.theme-dark .node.ui-on {
+    background: rgba(0, 255, 136, 0.30) !important;
+    box-shadow: 0 0 24px rgba(0, 255, 136, 0.65) !important;
+    border-color: #00ff88 !important;
+    outline: none !important; filter: none !important;
+  }
+</style>
+
+
+<style id="borders-and-active-glow-patch">
+  /* Inactive blocks: constant blue border */
+  .node:not(.has-signal):not(.ui-on) {
+    border: 3px solid #2196f3 !important;
+    outline: none !important;
+    box-shadow: none !important;
+  }
+  /* Active blocks: green border + glow (keep your background hint) */
+  .node.has-signal, .node.ui-on {
+    border: 2px solid #00ff88 !important;
+    box-shadow: 0 0 24px rgba(0, 255, 136, 0.65) !important;
+    outline: none !important;
+    filter: none !important;
+  }
+</style>
+
+
+<style id="selection-and-dark-active-clarity">
+  /* 1) Cambio de color al seleccionar el bloque (sin simulación activa) */
+  .node.selected:not(.has-signal):not(.ui-on) {
+    background: rgba(33, 150, 243, 0.14) !important;    /* tinte azul suave */
+    box-shadow: 0 0 0 2px #2196f3 inset !important;      /* borde interno de selección */
+    outline: none !important;
+  }
+
+  /* 2) En modo oscuro: activación con verde más visible y sin mezcla con el fondo */
+  html.theme-dark .node.has-signal,
+  html.theme-dark .node.ui-on {
+    background: rgba(0, 255, 136, 0.48) !important;      /* más opaco para que no se confunda con el fondo */
+    mix-blend-mode: normal !important;                    /* evita mezclas con el fondo oscuro */
+    filter: none !important;                              /* sin filtros que apaguen el color */
+  }
+
+  /* Mantener el borde verde cuando está activo en cualquier tema */
+  .node.has-signal, .node.ui-on {
+    border: 2px solid #00ff88 !important;
+  }
+</style>
+
+
+<style id="selection-border-5px-and-brighter-dark-active">
+  /* Selección con borde azul más grueso */
+  .node.selected:not(.has-signal):not(.ui-on){
+    background: rgba(33, 150, 243, 0.14) !important;
+    box-shadow: 0 0 0 5px #2196f3 inset !important; /* borde interno más grueso */
+    outline: none !important;
+  }
+
+  /* Modo oscuro: activado con verde más claro y visible */
+  html.theme-dark .node.has-signal,
+  html.theme-dark .node.ui-on{
+    background: rgba(0, 255, 136, 0.75) !important; /* más opaco y brillante */
+    mix-blend-mode: normal !important;
+    filter: none !important;
+  }
+</style>
+
 </head>
 <body>
 
@@ -5102,6 +5192,66 @@ document.addEventListener('DOMContentLoaded', function(){
     document.addEventListener('DOMContentLoaded', function(){ requestAnimationFrame(tick); }, {once:true});
   }else{
     requestAnimationFrame(tick);
+  }
+})();
+</script>
+
+
+<script id="scan-cycle-buffer">
+/* PLC-like scan buffering: apply class 'has-signal' changes once per frame */
+(function(){
+  var SCAN_ENABLED = true;
+  var buf = new Map();                 // element -> desired boolean
+  var prev = new WeakMap();            // element -> last applied boolean
+  var scheduled = false;
+  function applyBuffered(){
+    scheduled = false;
+    buf.forEach(function(desired, el){
+      el.classList.toggle('has-signal', desired);
+      prev.set(el, desired);
+    });
+    buf.clear();
+  }
+  function schedule(){
+    if (!scheduled){
+      scheduled = true;
+      requestAnimationFrame(applyBuffered);
+    }
+  }
+  function handleMutation(m){
+    if (!SCAN_ENABLED) return;
+    var el = m.target;
+    if (!(el instanceof HTMLElement) || !el.classList) return;
+    var nowVal = el.classList.contains('has-signal');
+    var last = prev.has(el) ? prev.get(el) : nowVal; // initialize first time
+    if (nowVal === last) return;
+    // Buffer and revert immediately to last state to avoid cascades in same frame
+    buf.set(el, nowVal);
+    el.classList.toggle('has-signal', last);
+    schedule();
+  }
+  function seedPrev(){
+    document.querySelectorAll('.node').forEach(function(el){
+      prev.set(el, el.classList.contains('has-signal'));
+    });
+  }
+  function start(){
+    seedPrev();
+    var root = document.getElementById('workspace') || document.body;
+    var mo = new MutationObserver(function(muts){
+      for (var i=0;i<muts.length;i++){
+        var m = muts[i];
+        if (m.type==='attributes' && m.attributeName==='class'){
+          handleMutation(m);
+        }
+      }
+    });
+    mo.observe(root, {subtree:true, attributes:true, attributeFilter:['class']});
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', start, {once:true});
+  } else {
+    start();
   }
 })();
 </script>
