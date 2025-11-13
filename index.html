@@ -294,6 +294,30 @@ body.splash #workspace { display: none !important; }
 /* opcional: atenuar el fondo del lienzo si por alguna razón se renderiza detrás */
 body.splash { background: #f7f9fc; }
 
+
+
+
+.btn-soporte {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #4CAF50; /* verde claro */
+    color: #fff;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 999px; /* pastilla redonda */
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+    z-index: 9999;
+}
+.btn-soporte:hover {
+    background-color: #45BF5A; /* verde un poco más intenso al pasar el mouse */
+}
+
+
 </style>
 <div id="uuidMachine">5bb0ff35-3abb-4766-8972-5bda4eb553b0</div>
 <style>
@@ -1907,10 +1931,6 @@ html.theme-dark .node.has-signal::after {
 <div class="component" data-type="xor" draggable="true">XOR</div>
 <div class="component" data-type="xnor" draggable="true">XNOR</div>
 <div style="height:4px"></div>
-<div class="component" data-type="sr" draggable="true">SR (Set/Reset)</div>
-<div style="height:4px"></div>
-<div class="component" data-type="ton" draggable="true">TON</div>
-<div class="component" data-type="toff" draggable="true">TOFF</div>
 <div style="flex:1"></div>
 <div style="font-size:11px;color:#333">Arrastra un bloque al área.</div>
 </div>
@@ -1920,6 +1940,7 @@ html.theme-dark .node.has-signal::after {
 <svg height="5000" id="wires" preserveaspectratio="none" viewbox="0 0 5000 5000" width="5000" xmlns="http://www.w3.org/2000/svg"></svg>
 </div>
 </div>
+<button id="btnSoporte" class="btn-soporte">💬 Soporte</button>
 <div id="brand">LOGICSOFT</div>
 <button id="installBtn">Instalar LOGICSOFT</button>
 <button id="fabPalette">🧩 Bloques</button>
@@ -5301,7 +5322,43 @@ document.addEventListener('DOMContentLoaded', function(){
 
       const svg =
         `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}">`+
-        `<defs><style>${(styles||'').replace(/<\/style>/g,'')}</style></defs>`+
+        `<defs><style>${(styles||'').replace(/<\/style>/g,'')}
+/* === Ajuste profesional del modal de EDITAR bloque === */
+.modal-edit-block {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    width: 90% !important;
+    max-width: 420px !important;
+    max-height: 75vh !important;
+    overflow-y: auto !important;
+    padding: 15px !important;
+    border-radius: 14px !important;
+    z-index: 9998 !important;
+}
+
+/* Contenido interno */
+.modal-edit-block input,
+.modal-edit-block select,
+.modal-edit-block textarea {
+    font-size: 15px !important;
+    padding: 8px !important;
+}
+
+/* Título */
+.modal-edit-block h2 {
+    font-size: 20px !important;
+    margin-bottom: 10px !important;
+}
+
+/* Botones */
+.modal-edit-block button {
+    font-size: 15px !important;
+    padding: 8px 14px !important;
+}
+
+</style></defs>`+
         `<rect x="0" y="0" width="100%" height="100%" fill="#ffffff"/>`+
         `<foreignObject x="0" y="0" width="${svgW}" height="${svgH}">`+
         `<div xmlns="http://www.w3.org/1999/xhtml">`+
@@ -5672,6 +5729,12 @@ document.addEventListener('DOMContentLoaded', function(){
 })();
 </script>
 
+
+<script>
+document.getElementById("btnSoporte").addEventListener("click", function () {
+    window.open("https://wa.link/ivw80a", "_blank");
+});
+</script>
 </body></html>
 <script>
 // ==== Assistant Add-on: Undo (Ctrl+Z) + Edición de números en B/Q/M/I ====
